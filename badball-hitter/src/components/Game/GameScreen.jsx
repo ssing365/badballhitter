@@ -1,23 +1,31 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import {
-  BALL_TYPES, QUEUE_SIZE, TIMER_MAX,
-  calcScore, getActiveTypes,
-  FEVER_COMBO_INTERVAL, FEVER_DURATION, PHASE2_THRESHOLD,
+  QUEUE_SIZE, TIMER_MAX,
+  calcScore, getActivePitches, assignDirsForTier, getPitchTierFromCombo, getPitchDir,
+  PITCH_UNLOCK_TIERS, PITCHES, FASTBALL_REPLACED_AT_TIER, FASTBALL_REPLACEMENT,
+  FEVER_COMBO_INTERVAL, FEVER_DURATION,
 } from '../constants'
 import './GameScreen.css'
 
 // 공 대기열에서 최하단(플레이어 앞) 공의 top % 위치
 const ballTop = (index) => 88 - index * 13
 
-// 대기열을 채우는 유틸
-const buildQueue = (existing, phase) => {
-  const types = getActiveTypes(phase)
+// 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
+const buildQueue = (existing, pitchTier, pitchDirs) => {
+  const ids = getActivePitches(pitchTier, pitchDirs).map((p) => p.id)
   const result = [...existing]
   while (result.length < QUEUE_SIZE) {
-    result.push(types[Math.floor(Math.random() * types.length)])
+    const id = ids[Math.floor(Math.random() * ids.length)]
+    result.push({ ...PITCHES[id] })
   }
   return result
 }
+
+// 직구 → 포심 교체 시 대기열 내 공 변환
+const migrateQueuePitch = (queue) =>
+  queue.map((ball) =>
+    ball.id === 'fastball' ? { ...PITCHES[FASTBALL_REPLACEMENT] } : ball
+  )
 
 export default function GameScreen({ team, onGameOver }) {
   // ── 게임 상태 ──
@@ -28,7 +36,8 @@ export default function GameScreen({ team, onGameOver }) {
   const [classified, setClassified] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [feverTaps, setFeverTaps] = useState(0)
-  const [phase, setPhase] = useState(1)
+  const [pitchTier, setPitchTier] = useState(0)
+  const [pitchDirs, setPitchDirs] = useState(() => assignDirsForTier(0))
 
   // ── UI 애니메이션 상태 ──
   const [queue, setQueue] = useState([])
@@ -44,13 +53,21 @@ export default function GameScreen({ team, onGameOver }) {
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
-  stateRef.current = { score, combo, maxCombo, outs, classified, correct, feverTaps, phase, queue, fever }
+  stateRef.current = { score, combo, maxCombo, outs, classified, correct, feverTaps, pitchTier, pitchDirs, queue, fever }
 
   const timerRaf = useRef(null)
   const timerStart = useRef(null)
   const feverTimer = useRef(null)
   const judgeLocked = useRef(false)  // 공 처리 중 중복 입력 방지
   const handleTimeoutRef = useRef(() => { })
+  const swingTimeout = useRef(null)
+
+  // ── 타자 스윙 애니메이션 ──
+  const triggerSwing = useCallback((dir) => {
+    clearTimeout(swingTimeout.current)
+    setSwingDir(dir)
+    swingTimeout.current = setTimeout(() => setSwingDir(null), 280)
+  }, [])
 
   // ── 팝업 표시 ──
   const showPop = useCallback((text, color) => {
@@ -127,7 +144,7 @@ export default function GameScreen({ team, onGameOver }) {
 
   // ── 시간 초과 처리 ──
   const handleTimeout = useCallback(() => {
-    const { outs: curOuts, queue: curQueue, phase: curPhase } = stateRef.current
+    const { outs: curOuts, queue: curQueue, pitchTier: curPitchTier, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
     showPop('시간 초과!', '#ef4444')
     const newOuts = curOuts + 1
@@ -137,7 +154,7 @@ export default function GameScreen({ team, onGameOver }) {
       return
     }
     // 맨 앞 공 제거 후 보충
-    const next = buildQueue(curQueue.slice(1), curPhase)
+    const next = buildQueue(curQueue.slice(1), curPitchTier, curPitchDirs)
     setQueue(next)
     startTimer()
   }, [showPop, startTimer, handleGameOver])
@@ -150,10 +167,11 @@ export default function GameScreen({ team, onGameOver }) {
   const judge = useCallback((dir) => {
     const { fever: isFever, queue: curQueue, combo: curCombo, score: curScore,
       maxCombo: curMax, classified: curCls, correct: curCrt,
-      feverTaps: curTaps, phase: curPhase, outs: curOuts } = stateRef.current
+      feverTaps: curTaps, pitchTier: curPitchTier, pitchDirs: curPitchDirs, outs: curOuts } = stateRef.current
 
-    // 피버 중엔 탭 카운트
+    // 피버 중엔 탭 카운트 + 스윙 표시
     if (isFever) {
+      triggerSwing(dir)
       const newTaps = curTaps + 1
       setFeverTaps(newTaps)
       setScore(curScore + 50)
@@ -165,7 +183,7 @@ export default function GameScreen({ team, onGameOver }) {
     cancelAnimationFrame(timerRaf.current)
 
     const bt = curQueue[0]
-    const isCorrect = dir === bt.dir
+    const isCorrect = dir === getPitchDir(bt.id, curPitchDirs)
 
     // 공 날아가는 애니메이션
     setFlyDir(dir)
@@ -175,10 +193,12 @@ export default function GameScreen({ team, onGameOver }) {
     setTimeout(() => setPitcherThrowing(false), 250)
 
     // 타자 스윙
-    setSwingDir(dir)
-    setTimeout(() => setSwingDir(null), 280)
+    triggerSwing(dir)
 
     const newClassified = curCls + 1
+
+    let nextPitchTier = curPitchTier
+    let nextPitchDirs = curPitchDirs
 
     if (isCorrect) {
       const newCombo = curCombo + 1
@@ -199,10 +219,23 @@ export default function GameScreen({ team, onGameOver }) {
         setTimeout(() => startFever(), 200)
       }
 
-      // 페이즈 2 전환
-      if (newClassified >= PHASE2_THRESHOLD && curPhase === 1) {
-        setPhase(2)
-        showPop('난이도 UP! 구종 추가!', '#facc15')
+      // 콤보 기준 구종 해금 (20콤보마다 2구종)
+      const unlockedTier = getPitchTierFromCombo(newCombo)
+      if (unlockedTier > curPitchTier) {
+        nextPitchTier = unlockedTier
+        nextPitchDirs = assignDirsForTier(unlockedTier, curPitchDirs)
+        setPitchTier(unlockedTier)
+        setPitchDirs(nextPitchDirs)
+
+        const addedLabels = []
+        for (let t = curPitchTier + 1; t <= unlockedTier; t++) {
+          addedLabels.push(...PITCH_UNLOCK_TIERS[t].map((id) => PITCHES[id].label))
+        }
+        let unlockMsg = `구종 추가! ${addedLabels.join(', ')}`
+        if (unlockedTier >= FASTBALL_REPLACED_AT_TIER && curPitchTier < FASTBALL_REPLACED_AT_TIER) {
+          unlockMsg += ' / 직구→포심'
+        }
+        setTimeout(() => showPop(unlockMsg, '#facc15'), 450)
       }
     } else {
       const newOuts = curOuts + 1
@@ -220,22 +253,26 @@ export default function GameScreen({ team, onGameOver }) {
     // 200ms 후 공 제거 및 다음 공 준비
     setTimeout(() => {
       setFlyDir(null)
-      const newPhase = isCorrect && newClassified >= PHASE2_THRESHOLD ? 2 : curPhase
-      const next = buildQueue(curQueue.slice(1), newPhase)
+      let sliced = curQueue.slice(1)
+      if (nextPitchTier >= FASTBALL_REPLACED_AT_TIER && curPitchTier < FASTBALL_REPLACED_AT_TIER) {
+        sliced = migrateQueuePitch(sliced)
+      }
+      const next = buildQueue(sliced, nextPitchTier, nextPitchDirs)
       setQueue(next)
       judgeLocked.current = false
       if (!stateRef.current.fever) startTimer()
     }, 200)
-  }, [showPop, startFever, handleGameOver, startTimer])
+  }, [showPop, startFever, handleGameOver, startTimer, triggerSwing])
 
   // ── 초기화 ──
   useEffect(() => {
-    const initial = buildQueue([], 1)
+    const initial = buildQueue([], 0, pitchDirs)
     setQueue(initial)
     startTimer()
     return () => {
       cancelAnimationFrame(timerRaf.current)
       clearInterval(feverTimer.current)
+      clearTimeout(swingTimeout.current)
     }
   }, []) // eslint-disable-line
 
@@ -250,7 +287,7 @@ export default function GameScreen({ team, onGameOver }) {
   }, [judge])
 
   // ── 활성 구종 힌트 계산 ──
-  const activeTypes = getActiveTypes(phase)
+  const activeTypes = getActivePitches(pitchTier, pitchDirs)
   const leftHints = activeTypes.filter((t) => t.dir === 'left')
   const rightHints = activeTypes.filter((t) => t.dir === 'right')
 
