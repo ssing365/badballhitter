@@ -1,0 +1,326 @@
+/* ── 게임 화면 전체 ── */
+.game-screen {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    height: 560px;
+    overflow: hidden;
+    background: #1a3a5c;
+    margin: 0 auto;
+    border-radius: 0;
+  }
+  
+  /* ── 배경 레이어 ── */
+  .bg-sky {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(180deg, #1a3a5c 0%, #2d6a9f 100%);
+  }
+  
+  .bg-grass {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 46%;
+    background: #2d6e1f;
+  }
+  
+  .bg-dirt {
+    position: absolute;
+    bottom: 42%; left: 0; right: 0;
+    height: 5%;
+    background: #8B6914;
+  }
+  
+  .bg-mound {
+    position: absolute;
+    top: 10%; left: 50%;
+    transform: translateX(-50%);
+    width: 56px; height: 18px;
+    background: #8B6914;
+    border-radius: 50%;
+  }
+  
+  /* ── HUD ── */
+  .hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  
+  .hud-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  
+  .hud-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+  }
+  
+  .out-row {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .out-dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    background: transparent;
+  }
+  
+  .out-dot.active {
+    background: #ef4444;
+    border-color: #ef4444;
+  }
+  
+  .combo-badge {
+    margin-top: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #facc15;
+    color: #78350f;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  
+  .hud-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+  }
+  
+  .hud-score {
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+  }
+  
+  /* ── 투수 ── */
+  .pitcher-area {
+    position: absolute;
+    top: 9%; left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    text-align: center;
+  }
+  
+  .pitcher-fig {
+    font-size: 26px;
+    line-height: 1;
+    display: inline-block;
+    transition: transform 0.15s;
+  }
+  
+  .pitcher-fig.throwing {
+    transform: scale(1.25) rotate(-18deg);
+  }
+  
+  /* ── 공 레인 ── */
+  .ball-lane {
+    position: absolute;
+    top: 13%; bottom: 28%;
+    left: 50%; transform: translateX(-50%);
+    width: 54px;
+    z-index: 10;
+    background: rgba(0,0,0,0.2);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  /* ── 공 아이템 ── */
+  .ball-item {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: top 0.14s ease, opacity 0.15s, transform 0.15s;
+  }
+  
+  .ball-item.fly-left {
+    opacity: 0;
+    transform: translateX(calc(-50% - 70px)) scale(0.6);
+  }
+  
+  .ball-item.fly-right {
+    opacity: 0;
+    transform: translateX(calc(-50% + 70px)) scale(0.6);
+  }
+  
+  /* ── 좌/우 힌트 ── */
+  .hint-side {
+    position: absolute;
+    top: 28%;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .hint-side.left { left: 4%; }
+  .hint-side.right { right: 4%; }
+  
+  .hint-arrow {
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+  }
+  
+  .hint-ball {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    border: 2px solid rgba(255,255,255,0.45);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  
+  .hint-lbl {
+    font-size: 10px;
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    line-height: 1.3;
+  }
+  
+  /* ── 타이머 ── */
+  .timer-wrap {
+    position: absolute;
+    bottom: 25%;
+    left: 20%; right: 20%;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  
+  .timer-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .timer-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.05s linear;
+  }
+  
+  .timer-num {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+  }
+  
+  /* ── 방향 버튼 + 타자 ── */
+  .btn-row {
+    position: absolute;
+    bottom: 3%; left: 0; right: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 6%;
+    z-index: 30;
+  }
+
+  .batter-sprite {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+    pointer-events: none;
+    user-select: none;
+    margin-bottom: 2px;
+  }
+  
+  .dir-btn {
+    width: 76px; height: 58px;
+    border-radius: 30px;
+    background: rgba(255,255,255,0.88);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+  }
+  
+  .dir-btn:active { transform: scale(0.91); }
+  
+  /* ── 결과 팝업 텍스트 ── */
+  .result-pop {
+    position: absolute;
+    top: 42%; left: 50%;
+    transform: translateX(-50%);
+    font-size: 17px;
+    font-weight: 600;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+    z-index: 40;
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity 0.3s;
+  }
+  
+  /* ── 피버 ── */
+  .fever-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    border: 3px solid #facc15;
+    pointer-events: none;
+  }
+  
+  .fever-ui {
+    position: absolute;
+    top: 28%; left: 0; right: 0;
+    z-index: 36;
+    text-align: center;
+    pointer-events: none;
+  }
+  
+  .fever-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #facc15;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  
+  .fever-sub {
+    font-size: 13px;
+    color: white;
+    margin-top: 4px;
+  }
+  
+  .fever-count {
+    font-size: 34px;
+    font-weight: 700;
+    color: white;
+    margin-top: 6px;
+  }

@@ -1,0 +1,73 @@
+.select-wrap {
+    width: 100%;
+    max-width: 400px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem 1.25rem;
+    margin: 1rem auto;
+  }
+  
+  .select-wrap h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 4px;
+  }
+  
+  .select-wrap p {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 1.25rem;
+  }
+  
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 7px;
+    margin-bottom: 1.25rem;
+  }
+  
+  .team-btn {
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  
+  .team-btn:hover {
+    border-color: #94a3b8;
+  }
+  
+  .team-btn.selected {
+    border: 1.5px solid #1D9E75;
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  
+  .start-btn {
+    width: 100%;
+    padding: 12px;
+    background: #1D9E75;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  
+  .start-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  
+  .start-btn:not(:disabled):hover {
+    opacity: 0.88;
+  }
