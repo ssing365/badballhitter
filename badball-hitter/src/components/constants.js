@@ -16,6 +16,28 @@ export const PITCHES = {
   sweeper:   { id: 'sweeper',   label: '스위',    text: 'SW', color: '#14b8a6', border: '#0d9488' },
 }
 
+// 공 이미지 적용 구종 (8구종 중 마지막 2개 제외 → 6개)
+export const IMAGE_PITCH_IDS = [
+  'fastball', 'slider', 'changeup', 'forkball', 'curve', 'twoseam',
+]
+
+export const COLOR_BALL_FILES = ['blue', 'green', 'purple', 'red', 'nurcle']
+
+export const createPitchBallImages = () => {
+  const shuffled = [...COLOR_BALL_FILES].sort(() => Math.random() - 0.5)
+  const images = {
+    fastball: '/assets/balls/white.png',
+    fourseam: '/assets/balls/white.png',
+  }
+  IMAGE_PITCH_IDS.slice(1).forEach((id, i) => {
+    images[id] = `/assets/balls/${shuffled[i]}.png`
+  })
+  return images
+}
+
+export const getPitchBallImage = (pitchId, pitchBallImages) =>
+  pitchBallImages[pitchId] ?? null
+
 // 콤보 N마다 2구종씩 해금 (개발용: 20콤보)
 export const COMBO_UNLOCK_INTERVAL = 20
 export const MAX_PITCH_TIER = 4

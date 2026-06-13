@@ -3,7 +3,7 @@ import {
   QUEUE_SIZE, TIMER_MAX,
   calcScore, getActivePitches, assignDirsForTier, getPitchTierFromCombo, getPitchDir,
   PITCH_UNLOCK_TIERS, PITCHES, FASTBALL_REPLACED_AT_TIER, FASTBALL_REPLACEMENT,
-  FEVER_COMBO_INTERVAL, FEVER_DURATION,
+  FEVER_COMBO_INTERVAL, FEVER_DURATION, createPitchBallImages, getPitchBallImage,
 } from '../constants'
 import './GameScreen.css'
 
@@ -38,6 +38,7 @@ export default function GameScreen({ team, onGameOver }) {
   const [feverTaps, setFeverTaps] = useState(0)
   const [pitchTier, setPitchTier] = useState(0)
   const [pitchDirs, setPitchDirs] = useState(() => assignDirsForTier(0))
+  const [pitchBallImages] = useState(() => createPitchBallImages())
 
   // ── UI 애니메이션 상태 ──
   const [queue, setQueue] = useState([])
@@ -296,13 +297,29 @@ export default function GameScreen({ team, onGameOver }) {
       : swingDir === 'right' ? '/assets/batter_swing_r.png'
         : '/assets/batter_idle.png'
 
+  const pitcherSrc = '/assets/pitcher_idle.png'
+
+  const renderBall = (pitch, className, size = 'lane') => {
+    const img = getPitchBallImage(pitch.id, pitchBallImages)
+    if (img) {
+      return (
+        <div className={`${className} has-img`}>
+          <img src={img} className={`ball-sprite ${size}`} alt="" draggable={false} />
+        </div>
+      )
+    }
+    return (
+      <div
+        className={className}
+        style={{ background: pitch.color, borderColor: pitch.border }}
+      >
+        {pitch.text}
+      </div>
+    )
+  }
+
   return (
     <div className="game-screen">
-      {/* 배경 */}
-      <div className="bg-sky" />
-      <div className="bg-grass" />
-      <div className="bg-dirt" />
-      <div className="bg-mound" />
 
       {/* HUD */}
       <div className="hud">
@@ -325,7 +342,12 @@ export default function GameScreen({ team, onGameOver }) {
 
       {/* 투수 */}
       <div className="pitcher-area">
-        <div className={`pitcher-fig ${pitcherThrowing ? 'throwing' : ''}`}>🧑‍⚾</div>
+        <img
+          className={`pitcher-sprite ${pitcherThrowing ? 'throwing' : ''}`}
+          src={pitcherSrc}
+          alt="투수"
+          draggable={false}
+        />
       </div>
 
       {/* 공 레인 */}
@@ -333,14 +355,10 @@ export default function GameScreen({ team, onGameOver }) {
         {queue.map((bt, i) => (
           <div
             key={`${bt.id}-${i}`}
-            className={`ball-item${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
-            style={{
-              top: `${ballTop(i)}%`,
-              background: bt.color,
-              borderColor: bt.border,
-            }}
+            className={`ball-item-wrap${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
+            style={{ top: `${ballTop(i)}%` }}
           >
-            {bt.text}
+            {renderBall(bt, 'ball-item', 'lane')}
           </div>
         ))}
       </div>
@@ -350,9 +368,7 @@ export default function GameScreen({ team, onGameOver }) {
         <span className="hint-arrow">◀</span>
         {leftHints.map((bt) => (
           <div key={bt.id}>
-            <div className="hint-ball" style={{ background: bt.color, borderColor: bt.border }}>
-              {bt.text}
-            </div>
+            {renderBall(bt, 'hint-ball', 'hint')}
             <div className="hint-lbl">{bt.label}</div>
           </div>
         ))}
@@ -363,9 +379,7 @@ export default function GameScreen({ team, onGameOver }) {
         <span className="hint-arrow">▶</span>
         {rightHints.map((bt) => (
           <div key={bt.id}>
-            <div className="hint-ball" style={{ background: bt.color, borderColor: bt.border }}>
-              {bt.text}
-            </div>
+            {renderBall(bt, 'hint-ball', 'hint')}
             <div className="hint-lbl">{bt.label}</div>
           </div>
         ))}
