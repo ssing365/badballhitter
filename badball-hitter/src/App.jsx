@@ -1,16 +1,14 @@
 import { useState } from 'react'
-import TeamSelect from './components/Team/TeamSelect'
+import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
 
 export default function App() {
-  const [screen, setScreen] = useState('select') // 'select' | 'playing' | 'result'
-  const [team, setTeam] = useState(null)
+  const [screen, setScreen] = useState('title') // 'title' | 'playing' | 'result'
   const [stats, setStats] = useState(null)
   const [gameKey, setGameKey] = useState(0)
 
-  const handleStart = (selectedTeam) => {
-    setTeam(selectedTeam)
+  const handlePlay = () => {
     setGameKey((k) => k + 1)
     setScreen('playing')
   }
@@ -26,25 +24,38 @@ export default function App() {
     setScreen('playing')
   }
 
-  if (screen === 'playing' && team) {
+  const handleBackToTitle = () => {
+    setStats(null)
+    setScreen('title')
+  }
+
+  const handleRanking = () => {
+    alert('Ranking coming soon!')
+  }
+
+  if (screen === 'playing') {
     return (
       <GameScreen
         key={gameKey}
-        team={team}
         onGameOver={handleGameOver}
       />
     )
   }
 
-  if (screen === 'result' && team && stats) {
+  if (screen === 'result' && stats) {
     return (
       <GameResult
         stats={stats}
-        team={team}
         onRetry={handleRetry}
+        onHome={handleBackToTitle}
       />
     )
   }
 
-  return <TeamSelect onStart={handleStart} />
+  return (
+    <TitleScreen
+      onPlay={handlePlay}
+      onRanking={handleRanking}
+    />
+  )
 }

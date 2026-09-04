@@ -78,7 +78,7 @@
   /* ── 투수 ── */
   .pitcher-area {
     position: absolute;
-    top: 9%; left: 50%;
+    top: 35%; left: 50%;
     transform: translateX(-50%);
     z-index: 20;
     text-align: center;
@@ -107,27 +107,30 @@
     left: 50%; transform: translateX(-50%);
     width: 54px;
     z-index: 10;
-    background: rgba(0,0,0,0.2);
-    border-left: 1px solid rgba(255,255,255,0.1);
-    border-right: 1px solid rgba(255,255,255,0.1);
   }
   
   /* ── 공 아이템 ── */
   .ball-item-wrap {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
-    transition: top 0.14s ease, opacity 0.15s, transform 0.15s;
+    transform: translateX(-50%) scale(var(--ball-scale, 1));
+    transform-origin: center bottom;
+    transition: top 0.16s ease, transform 0.2s ease-out, opacity 0.2s ease-out;
   }
 
   .ball-item-wrap.fly-left {
+    transform: translateX(calc(-50% - 52px)) translateY(-58px) scale(0.45);
     opacity: 0;
-    transform: translateX(calc(-50% - 70px)) scale(0.6);
   }
 
   .ball-item-wrap.fly-right {
+    transform: translateX(calc(-50% + 52px)) translateY(-58px) scale(0.45);
     opacity: 0;
-    transform: translateX(calc(-50% + 70px)) scale(0.6);
+  }
+
+  .ball-item-wrap.fever-hit {
+    z-index: 30;
+    pointer-events: none;
   }
 
   .ball-item,
@@ -138,8 +141,8 @@
   }
 
   .ball-item {
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     font-size: 12px;
     font-weight: 700;
@@ -165,8 +168,8 @@
   }
 
   .ball-sprite.lane {
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
   }
 
   .ball-sprite.hint {

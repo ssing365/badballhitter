@@ -88,3 +88,20 @@
   .btn-share:hover {
     opacity: 0.88;
   }
+
+  .btn-home {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .btn-home:hover {
+    color: #0f172a;
+  }

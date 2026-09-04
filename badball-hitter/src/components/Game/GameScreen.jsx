@@ -7,8 +7,12 @@ import {
 } from '../constants'
 import './GameScreen.css'
 
-// 공 대기열에서 최하단(플레이어 앞) 공의 top % 위치
-const ballTop = (index) => 88 - index * 13
+// 공 대기열 레이아웃 — 앞(index 0)이 크고, 뒤로 갈수록 작게 겹침
+const ballLaneLayout = (index) => ({
+  top: `${86 - index * 5.5}%`,
+  zIndex: 24 - index,
+  '--ball-scale': `${1 - index * 0.085}`,
+})
 
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 const buildQueue = (existing, pitchTier, pitchDirs) => {
@@ -27,7 +31,7 @@ const migrateQueuePitch = (queue) =>
     ball.id === 'fastball' ? { ...PITCHES[FASTBALL_REPLACEMENT] } : ball
   )
 
-export default function GameScreen({ team, onGameOver }) {
+export default function GameScreen({ onGameOver }) {
   // ── 게임 상태 ──
   const [score, setScore] = useState(0)
   const [combo, setCombo] = useState(0)
@@ -51,6 +55,7 @@ export default function GameScreen({ team, onGameOver }) {
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
+  const [feverHitBall, setFeverHitBall] = useState(null) // 피버 연타 시 날아가는 공
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
@@ -62,6 +67,7 @@ export default function GameScreen({ team, onGameOver }) {
   const judgeLocked = useRef(false)  // 공 처리 중 중복 입력 방지
   const handleTimeoutRef = useRef(() => { })
   const swingTimeout = useRef(null)
+  const feverHitTimeout = useRef(null)
 
   // ── 타자 스윙 애니메이션 ──
   const triggerSwing = useCallback((dir) => {
@@ -106,7 +112,7 @@ export default function GameScreen({ team, onGameOver }) {
     clearInterval(feverTimer.current)
     setFever(false)
     const { feverTaps: taps } = stateRef.current
-    showPop(`피버 +${taps * 50}점!`, '#facc15')
+    showPop(`Fever +${taps * 50}!`, '#facc15')
     // 피버 종료 후 타이머 재시작
     setTimeout(() => startTimer(), 300)
   }, [showPop, startTimer])
@@ -130,8 +136,8 @@ export default function GameScreen({ team, onGameOver }) {
     cancelAnimationFrame(timerRaf.current)
     clearInterval(feverTimer.current)
     const s = stateRef.current
-    // TODO: Supabase — 점수 저장
-    // saveScore({ teamId: team.id, score: s.score, maxCombo: s.maxCombo })
+    // TODO: Supabase — save score
+    // saveScore({ score: s.score, maxCombo: s.maxCombo })
     setTimeout(() => {
       onGameOver({
         score: s.score,
@@ -147,7 +153,7 @@ export default function GameScreen({ team, onGameOver }) {
   const handleTimeout = useCallback(() => {
     const { outs: curOuts, queue: curQueue, pitchTier: curPitchTier, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
-    showPop('시간 초과!', '#ef4444')
+    showPop('Time up!', '#ef4444')
     const newOuts = curOuts + 1
     setOuts(newOuts)
     if (newOuts >= 3) {
@@ -170,12 +176,19 @@ export default function GameScreen({ team, onGameOver }) {
       maxCombo: curMax, classified: curCls, correct: curCrt,
       feverTaps: curTaps, pitchTier: curPitchTier, pitchDirs: curPitchDirs, outs: curOuts } = stateRef.current
 
-    // 피버 중엔 탭 카운트 + 스윙 표시
+    // 피버 중 — 좌우 구분 없이 연타, 공은 일반처럼 날아감 (아웃 없음)
     if (isFever) {
       triggerSwing(dir)
       const newTaps = curTaps + 1
       setFeverTaps(newTaps)
       setScore(curScore + 50)
+
+      if (curQueue.length > 0) {
+        clearTimeout(feverHitTimeout.current)
+        setFeverHitBall({ dir, pitch: curQueue[0] })
+        setQueue(buildQueue(curQueue.slice(1), curPitchTier, curPitchDirs))
+        feverHitTimeout.current = setTimeout(() => setFeverHitBall(null), 220)
+      }
       return
     }
 
@@ -213,7 +226,7 @@ export default function GameScreen({ team, onGameOver }) {
       setScore(newScore)
       setCorrect(newCorrect)
       setClassified(newClassified)
-      showPop(newCombo > 1 ? `${newCombo}연속! +${pts}` : `좋아! +${pts}`, '#4ade80')
+      showPop(newCombo > 1 ? `${newCombo} combo! +${pts}` : `Nice! +${pts}`, '#4ade80')
 
       // 피버 발동
       if (newCombo % FEVER_COMBO_INTERVAL === 0) {
@@ -232,9 +245,9 @@ export default function GameScreen({ team, onGameOver }) {
         for (let t = curPitchTier + 1; t <= unlockedTier; t++) {
           addedLabels.push(...PITCH_UNLOCK_TIERS[t].map((id) => PITCHES[id].label))
         }
-        let unlockMsg = `구종 추가! ${addedLabels.join(', ')}`
+        let unlockMsg = `New pitches! ${addedLabels.join(', ')}`
         if (unlockedTier >= FASTBALL_REPLACED_AT_TIER && curPitchTier < FASTBALL_REPLACED_AT_TIER) {
-          unlockMsg += ' / 직구→포심'
+          unlockMsg += ' / Fastball → 4-Seam'
         }
         setTimeout(() => showPop(unlockMsg, '#facc15'), 450)
       }
@@ -242,7 +255,7 @@ export default function GameScreen({ team, onGameOver }) {
       const newOuts = curOuts + 1
       setCombo(0)
       setClassified(newClassified)
-      showPop('틀렸어! ❌', '#ef4444')
+      showPop('Miss! ❌', '#ef4444')
       setOuts(newOuts)
       if (newOuts >= 3) {
         setTimeout(() => handleGameOver(), 300)
@@ -274,6 +287,7 @@ export default function GameScreen({ team, onGameOver }) {
       cancelAnimationFrame(timerRaf.current)
       clearInterval(feverTimer.current)
       clearTimeout(swingTimeout.current)
+      clearTimeout(feverHitTimeout.current)
     }
   }, []) // eslint-disable-line
 
@@ -324,14 +338,14 @@ export default function GameScreen({ team, onGameOver }) {
       {/* HUD */}
       <div className="hud">
         <div className="hud-left">
-          <span className="hud-label">아웃</span>
+          <span className="hud-label">OUTS</span>
           <div className="out-row">
             {[1, 2, 3].map((n) => (
               <div key={n} className={`out-dot ${outs >= n ? 'active' : ''}`} />
             ))}
           </div>
           <div className="combo-badge">
-            {combo > 0 ? `${combo}콤보🔥` : '콤보 0'}
+            {combo > 0 ? `${combo} COMBO` : 'COMBO 0'}
           </div>
         </div>
         <div className="hud-right">
@@ -355,12 +369,20 @@ export default function GameScreen({ team, onGameOver }) {
         {queue.map((bt, i) => (
           <div
             key={`${bt.id}-${i}`}
-            className={`ball-item-wrap${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
-            style={{ top: `${ballTop(i)}%` }}
+            className={`ball-item-wrap depth-${i}${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
+            style={ballLaneLayout(i)}
           >
             {renderBall(bt, 'ball-item', 'lane')}
           </div>
         ))}
+        {feverHitBall && (
+          <div
+            className={`ball-item-wrap depth-0 fly-${feverHitBall.dir} fever-hit`}
+            style={ballLaneLayout(0)}
+          >
+            {renderBall(feverHitBall.pitch, 'ball-item', 'lane')}
+          </div>
+        )}
       </div>
 
       {/* 좌측 힌트 */}
@@ -417,7 +439,7 @@ export default function GameScreen({ team, onGameOver }) {
           <div className="fever-overlay" />
           <div className="fever-ui">
             <div className="fever-title">🔥 FEVER!</div>
-            <div className="fever-sub">화면을 연타!</div>
+            <div className="fever-sub">Tap away!</div>
             <div className="fever-count">{feverCountdown}</div>
           </div>
         </>
