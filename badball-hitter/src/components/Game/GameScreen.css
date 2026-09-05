@@ -32,33 +32,37 @@
     font-size: 10px;
     color: rgba(255,255,255,0.6);
   }
+
+  .outs-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.85);
+  }
   
   .out-row {
     display: flex;
-    gap: 4px;
+    gap: 7px;
+    margin-top: 4px;
   }
   
   .out-dot {
-    width: 11px; height: 11px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,0.4);
+    border: 2.5px solid rgba(255,255,255,0.45);
     background: transparent;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.12s;
   }
   
   .out-dot.active {
     background: #ef4444;
-    border-color: #ef4444;
-  }
-  
-  .combo-badge {
-    margin-top: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #facc15;
-    color: #78350f;
-    padding: 2px 8px;
-    border-radius: 10px;
-    white-space: nowrap;
+    border-color: #fecaca;
+    box-shadow:
+      0 0 10px rgba(239, 68, 68, 0.85),
+      0 0 18px rgba(239, 68, 68, 0.45);
+    transform: scale(1.08);
   }
   
   .hud-right {
@@ -191,11 +195,6 @@
   .hint-side.left { left: 4%; }
   .hint-side.right { right: 4%; }
   
-  .hint-arrow {
-    font-size: 16px;
-    color: rgba(255,255,255,0.8);
-  }
-  
   .hint-ball {
     width: 38px;
     height: 38px;
@@ -209,9 +208,13 @@
   
   .hint-lbl {
     font-size: 10px;
-    color: rgba(255,255,255,0.75);
+    font-weight: 700;
+    color: #fff;
     text-align: center;
     line-height: 1.3;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.85),
+      0 0 6px rgba(0, 0, 0, 0.55);
   }
   
   /* ── 타이머 ── */
@@ -228,15 +231,15 @@
   
   .timer-track {
     width: 100%;
-    height: 6px;
+    height: 9px;
     background: rgba(255,255,255,0.15);
-    border-radius: 3px;
+    border-radius: 5px;
     overflow: hidden;
   }
   
   .timer-bar {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 5px;
     transition: width 0.05s linear;
   }
   
@@ -278,10 +281,15 @@
     justify-content: center;
     font-size: 22px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-    transition: transform 0.1s;
+    transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
   }
   
-  .dir-btn:active { transform: scale(0.91); }
+  .dir-btn:active,
+  .dir-btn.pressed {
+    transform: scale(0.88) translateY(2px);
+    background: rgba(250, 204, 21, 0.95);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  }
   
   /* ── 결과 팝업 텍스트 ── */
   .result-pop {

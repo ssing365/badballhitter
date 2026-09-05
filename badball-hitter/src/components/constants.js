@@ -114,7 +114,7 @@ export const toPitchBall = (id, pitchDirs) => ({
 export const QUEUE_SIZE = 8
 
 // 타이머 초기값 (초)
-export const TIMER_MAX = 5
+export const TIMER_MAX = 3
 
 // 콤보 점수 공식: 100 + floor(100 * log2(combo+1))
 export const calcScore = (combo) => 100 + Math.floor(100 * Math.log2(combo + 1))

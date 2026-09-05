@@ -68,6 +68,7 @@ export default function GameScreen({ onGameOver }) {
   const handleTimeoutRef = useRef(() => { })
   const swingTimeout = useRef(null)
   const feverHitTimeout = useRef(null)
+  const feverActiveRef = useRef(false)
 
   // ── 타자 스윙 애니메이션 ──
   const triggerSwing = useCallback((dir) => {
@@ -84,19 +85,24 @@ export default function GameScreen({ onGameOver }) {
 
   // ── 타이머 시작 ──
   const startTimer = useCallback(() => {
+    if (feverActiveRef.current) return
     cancelAnimationFrame(timerRaf.current)
     timerStart.current = performance.now()
     setTimerPct(100)
     setTimerNum(TIMER_MAX.toFixed(1))
 
     const tick = (now) => {
+      if (feverActiveRef.current) {
+        cancelAnimationFrame(timerRaf.current)
+        return
+      }
       const elapsed = (now - timerStart.current) / 1000
       const remaining = Math.max(0, TIMER_MAX - elapsed)
       const pct = (remaining / TIMER_MAX) * 100
 
       setTimerPct(pct)
       setTimerNum(remaining.toFixed(1))
-      setTimerColor(pct > 50 ? '#4ade80' : pct > 25 ? '#facc15' : '#ef4444')
+      setTimerColor(remaining > 2 ? '#4ade80' : remaining > 1 ? '#facc15' : '#ef4444')
 
       if (remaining <= 0) {
         handleTimeoutRef.current()
@@ -110,6 +116,7 @@ export default function GameScreen({ onGameOver }) {
   // ── 피버 종료 ──
   const endFever = useCallback(() => {
     clearInterval(feverTimer.current)
+    feverActiveRef.current = false
     setFever(false)
     const { feverTaps: taps } = stateRef.current
     showPop(`Fever +${taps * 50}!`, '#facc15')
@@ -119,6 +126,7 @@ export default function GameScreen({ onGameOver }) {
 
   // ── 피버 시작 ──
   const startFever = useCallback(() => {
+    feverActiveRef.current = true
     cancelAnimationFrame(timerRaf.current)
     setFever(true)
     setFeverCountdown(FEVER_DURATION)
@@ -151,6 +159,7 @@ export default function GameScreen({ onGameOver }) {
 
   // ── 시간 초과 처리 ──
   const handleTimeout = useCallback(() => {
+    if (feverActiveRef.current) return
     const { outs: curOuts, queue: curQueue, pitchTier: curPitchTier, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
     showPop('Time up!', '#ef4444')
@@ -274,7 +283,7 @@ export default function GameScreen({ onGameOver }) {
       const next = buildQueue(sliced, nextPitchTier, nextPitchDirs)
       setQueue(next)
       judgeLocked.current = false
-      if (!stateRef.current.fever) startTimer()
+      if (!feverActiveRef.current) startTimer()
     }, 200)
   }, [showPop, startFever, handleGameOver, startTimer, triggerSwing])
 
@@ -338,14 +347,11 @@ export default function GameScreen({ onGameOver }) {
       {/* HUD */}
       <div className="hud">
         <div className="hud-left">
-          <span className="hud-label">OUTS</span>
+          <span className="hud-label outs-label">OUTS</span>
           <div className="out-row">
             {[1, 2, 3].map((n) => (
               <div key={n} className={`out-dot ${outs >= n ? 'active' : ''}`} />
             ))}
-          </div>
-          <div className="combo-badge">
-            {combo > 0 ? `${combo} COMBO` : 'COMBO 0'}
           </div>
         </div>
         <div className="hud-right">
@@ -387,7 +393,6 @@ export default function GameScreen({ onGameOver }) {
 
       {/* 좌측 힌트 */}
       <div className="hint-side left">
-        <span className="hint-arrow">◀</span>
         {leftHints.map((bt) => (
           <div key={bt.id}>
             {renderBall(bt, 'hint-ball', 'hint')}
@@ -398,7 +403,6 @@ export default function GameScreen({ onGameOver }) {
 
       {/* 우측 힌트 */}
       <div className="hint-side right">
-        <span className="hint-arrow">▶</span>
         {rightHints.map((bt) => (
           <div key={bt.id}>
             {renderBall(bt, 'hint-ball', 'hint')}
@@ -407,22 +411,34 @@ export default function GameScreen({ onGameOver }) {
         ))}
       </div>
 
-      {/* 타이머 */}
-      <div className="timer-wrap">
-        <div className="timer-track">
-          <div
-            className="timer-bar"
-            style={{ width: `${timerPct}%`, background: timerColor }}
-          />
+      {/* 타이머 — 피버 중에는 숨김 */}
+      {!fever && (
+        <div className="timer-wrap">
+          <div className="timer-track">
+            <div
+              className="timer-bar"
+              style={{ width: `${timerPct}%`, background: timerColor }}
+            />
+          </div>
+          <span className="timer-num">{timerNum}</span>
         </div>
-        <span className="timer-num">{timerNum}</span>
-      </div>
+      )}
 
       {/* 좌/우 버튼 + 타자 */}
       <div className="btn-row">
-        <button className="dir-btn" onClick={() => judge('left')}>◀</button>
-        <img className="batter-sprite" src={batterSrc} alt="타자" draggable={false} />
-        <button className="dir-btn" onClick={() => judge('right')}>▶</button>
+        <button
+          className={`dir-btn ${swingDir === 'left' ? 'pressed' : ''}`}
+          onClick={() => judge('left')}
+        >
+          ◀
+        </button>
+        <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
+        <button
+          className={`dir-btn ${swingDir === 'right' ? 'pressed' : ''}`}
+          onClick={() => judge('right')}
+        >
+          ▶
+        </button>
       </div>
 
       {/* 결과 팝업 */}

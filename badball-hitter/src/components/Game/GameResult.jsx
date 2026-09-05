@@ -10,7 +10,7 @@ export default function GameResult({ stats, onRetry, onHome }) {
   const grade = GRADES.find((g) => acc >= g.minAcc)
 
   const handleShare = () => {
-    const text = `BadBallHitter — ${score.toLocaleString()} pts!\nAccuracy ${acc}% / Max combo ${maxCombo}\nhttps://badballhitter.com`
+    const text = `BadBallHitter — ${score.toLocaleString()} pts!\nHits ${correct} / Max combo ${maxCombo}\nhttps://badballhitter.com`
     if (navigator.share) {
       navigator.share({ title: 'BadBallHitter', text })
     } else {
@@ -26,7 +26,6 @@ export default function GameResult({ stats, onRetry, onHome }) {
 
       <div className="stat-list">
         <div className="stat-row"><span className="label">Hits</span><span className="value">{correct}</span></div>
-        <div className="stat-row"><span className="label">Accuracy</span><span className="value">{acc}%</span></div>
         <div className="stat-row"><span className="label">Max Combo</span><span className="value">{maxCombo}</span></div>
         <div className="stat-row"><span className="label">Fever Taps</span><span className="value">{feverTaps}</span></div>
       </div>
