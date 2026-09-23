@@ -1,0 +1,49 @@
+/* 모든 화면 공통 — 게임 화면 폭(400px) 기준 우측 상단에 고정 */
+.bgm-toggle-layer {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* 게임 중에는 HUD(점수)와 겹치지 않도록 HUD 아래로 */
+.bgm-toggle-layer.in-game {
+  top: 58px;
+}
+
+.bgm-toggle {
+  pointer-events: auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  cursor: pointer;
+}
+
+.bgm-toggle:active {
+  transform: scale(0.92);
+}
+
+.bgm-toggle-icon {
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}

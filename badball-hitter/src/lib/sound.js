@@ -1,12 +1,25 @@
 import { Howl } from 'howler'
 
 const BGM_VOLUME = 0.35
+const BGM_MUTED_KEY = 'bgmMuted'
+
+// 재방문 시 BGM on/off 상태 복원 (storage 접근 실패 시 on)
+const loadMuted = () => {
+  try {
+    return localStorage.getItem(BGM_MUTED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+let muted = loadMuted()
 
 const tracks = {
   normal: new Howl({
     src: [encodeURI('/sounds/Pinball Spring.mp3')],
     loop: true,
     volume: BGM_VOLUME,
+    mute: muted,
     preload: true,
     html5: true,
   }),
@@ -14,9 +27,23 @@ const tracks = {
     src: [encodeURI('/sounds/Pinball Spring 160.mp3')],
     loop: true,
     volume: BGM_VOLUME,
+    mute: muted,
     preload: true,
     html5: true,
   }),
+}
+
+export const isBgmMuted = () => muted
+
+// 트랙은 계속 재생하고 음소거만 토글 — 화면 전환 로직은 그대로 유지
+export const setBgmMuted = (next) => {
+  muted = next
+  Object.values(tracks).forEach((howl) => howl.mute(muted))
+  try {
+    localStorage.setItem(BGM_MUTED_KEY, muted ? '1' : '0')
+  } catch {
+    // storage 차단 환경에서는 저장만 생략
+  }
 }
 
 let currentType = null

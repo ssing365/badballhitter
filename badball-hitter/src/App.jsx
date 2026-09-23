@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
+import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
 
 export default function App() {
@@ -43,29 +44,35 @@ export default function App() {
     alert('Ranking coming soon!')
   }
 
+  let content
   if (screen === 'playing') {
-    return (
+    content = (
       <GameScreen
         key={gameKey}
         onGameOver={handleGameOver}
       />
     )
-  }
-
-  if (screen === 'result' && stats) {
-    return (
+  } else if (screen === 'result' && stats) {
+    content = (
       <GameResult
         stats={stats}
         onRetry={handleRetry}
         onHome={handleBackToTitle}
       />
     )
+  } else {
+    content = (
+      <TitleScreen
+        onPlay={handlePlay}
+        onRanking={handleRanking}
+      />
+    )
   }
 
   return (
-    <TitleScreen
-      onPlay={handlePlay}
-      onRanking={handleRanking}
-    />
+    <>
+      {content}
+      <BgmToggle inGame={screen === 'playing'} />
+    </>
   )
 }
