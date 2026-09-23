@@ -48,6 +48,29 @@ export const setBgmMuted = (next) => {
 
 let currentType = null
 
+const GESTURE_EVENTS = ['click', 'keydown', 'touchend']
+let waitingGesture = false
+
+// 자동재생 차단(첫 접속 타이틀) 시 html5 audio는 play()가 id를 반환하고 비동기로 playerror만 발생
+// → 첫 사용자 입력 때 그 시점의 현재 트랙을 재생
+// bubble 단계라 React 클릭 핸들러(playBgm('fast') 등)가 먼저 실행되고, 이미 재생 중이면 건너뜀
+const retryOnGesture = () => {
+  if (waitingGesture) return
+  waitingGesture = true
+
+  const onGesture = () => {
+    GESTURE_EVENTS.forEach((ev) => window.removeEventListener(ev, onGesture))
+    waitingGesture = false
+    const track = currentType && tracks[currentType]
+    if (!track || track.playing()) return
+    track.off('playerror')
+    track.once('playerror', retryOnGesture)
+    track.play()
+  }
+
+  GESTURE_EVENTS.forEach((ev) => window.addEventListener(ev, onGesture))
+}
+
 const stopTrack = (howl) => {
   howl.off('fade')
   howl.stop()
@@ -74,13 +97,9 @@ export const playBgm = (type) => {
   const start = () => {
     if (currentType !== nextType) return
     next.volume(BGM_VOLUME)
-    const id = next.play()
-    if (id == null) {
-      // autoplay blocked or not ready — retry once on unlock
-      next.once('unlock', () => {
-        if (currentType === nextType && !next.playing()) next.play()
-      })
-    }
+    next.off('playerror') // 이전 play의 미발생 리스너 정리
+    next.once('playerror', retryOnGesture)
+    next.play()
   }
 
   if (next.state() === 'loaded') {
