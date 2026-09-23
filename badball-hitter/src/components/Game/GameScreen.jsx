@@ -50,7 +50,6 @@ export default function GameScreen({ onGameOver }) {
   const [pitcherThrowing, setPitcherThrowing] = useState(false)
   const [swingDir, setSwingDir] = useState(null)     // 'left' | 'right' | null
   const [popMsg, setPopMsg] = useState({ text: '', color: '', visible: false })
-  const [timerPct, setTimerPct] = useState(100)
   const [timerColor, setTimerColor] = useState('#4ade80')
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
@@ -62,6 +61,7 @@ export default function GameScreen({ onGameOver }) {
   stateRef.current = { score, combo, maxCombo, outs, classified, correct, feverTaps, pitchTier, pitchDirs, queue, fever }
 
   const timerRaf = useRef(null)
+  const timerBarRef = useRef(null)  // 바 너비는 매 프레임 DOM 직접 갱신 (리렌더 없이)
   const timerStart = useRef(null)
   const feverTimer = useRef(null)
   const judgeLocked = useRef(false)  // 공 처리 중 중복 입력 방지
@@ -88,7 +88,8 @@ export default function GameScreen({ onGameOver }) {
     if (feverActiveRef.current) return
     cancelAnimationFrame(timerRaf.current)
     timerStart.current = performance.now()
-    setTimerPct(100)
+    if (timerBarRef.current) timerBarRef.current.style.transform = 'scaleX(1)'
+    setTimerColor('#4ade80')
     setTimerNum(TIMER_MAX.toFixed(1))
 
     const tick = (now) => {
@@ -98,9 +99,9 @@ export default function GameScreen({ onGameOver }) {
       }
       const elapsed = (now - timerStart.current) / 1000
       const remaining = Math.max(0, TIMER_MAX - elapsed)
-      const pct = (remaining / TIMER_MAX) * 100
-
-      setTimerPct(pct)
+      if (timerBarRef.current) {
+        timerBarRef.current.style.transform = `scaleX(${remaining / TIMER_MAX})`
+      }
       setTimerNum(remaining.toFixed(1))
       setTimerColor(remaining > 2 ? '#4ade80' : remaining > 1 ? '#facc15' : '#ef4444')
 
@@ -417,7 +418,8 @@ export default function GameScreen({ onGameOver }) {
           <div className="timer-track">
             <div
               className="timer-bar"
-              style={{ width: `${timerPct}%`, background: timerColor }}
+              ref={timerBarRef}
+              style={{ background: timerColor }}
             />
           </div>
           <span className="timer-num">{timerNum}</span>
