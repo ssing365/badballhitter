@@ -486,8 +486,9 @@ export default function GameScreen({ onGameOver }) {
         <button
           className={`dir-btn ${swingDir === 'left' ? 'pressed' : ''}`}
           onPointerDown={(e) => { e.preventDefault(); judge('left') }}
+          aria-label="Left"
         >
-          ◀
+          <span className="dir-arrow left" />
         </button>
         <div className="batter-wrap">
           {swingDir && <div key={swingId} className={`swing-trail ${swingDir}`} />}
@@ -496,8 +497,9 @@ export default function GameScreen({ onGameOver }) {
         <button
           className={`dir-btn ${swingDir === 'right' ? 'pressed' : ''}`}
           onPointerDown={(e) => { e.preventDefault(); judge('right') }}
+          aria-label="Right"
         >
-          ▶
+          <span className="dir-arrow right" />
         </button>
       </div>
 

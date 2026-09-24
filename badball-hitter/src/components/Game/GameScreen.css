@@ -546,30 +546,91 @@
     margin-bottom: 2px;
   }
   
+  /* 아케이드 버튼 — 윗면 + 두꺼운 밑면(box-shadow), 눌리면 밑면만큼 가라앉음 */
   .dir-btn {
+    --btn-face: #cbb68a;
+    --btn-face-hi: #fffdf6;
+    --btn-edge: #7a6443;
+    /* 크림색은 흰 광택이 안 보여서 안쪽 음영으로 입체감 보강 */
+    --btn-shade:
+      inset 0 -5px 0 rgba(122, 100, 67, 0.35),
+      inset 0 3px 0 rgba(255, 255, 255, 0.9);
+    --btn-rim: #3b2f23;
+    --btn-arrow: #dc2626;
+    --btn-depth: 6px;
     position: relative;
     z-index: 1;  /* 커진 타자보다 위 */
     width: 76px; height: 58px;
+    margin-bottom: var(--btn-depth);
     touch-action: manipulation; /* 빠른 연타가 더블탭 줌으로 인식되지 않게 */
-    border-radius: 30px;
-    background: rgba(255,255,255,0.88);
-    border: none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 14px;
+    border: 3px solid var(--btn-rim);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.28) 0 38%, transparent 38%),
+      linear-gradient(180deg, var(--btn-face-hi), var(--btn-face));
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-    transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+    padding: 0;
+    box-shadow:
+      var(--btn-shade),
+      0 var(--btn-depth) 0 var(--btn-edge),
+      0 calc(var(--btn-depth) + 4px) 8px rgba(0,0,0,0.45);
+    transition: transform 0.06s, box-shadow 0.06s, filter 0.06s;
   }
-  
+
   .dir-btn:active,
   .dir-btn.pressed {
-    transform: scale(0.88) translateY(2px);
-    background: rgba(250, 204, 21, 0.95);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    transform: translateY(var(--btn-depth));
+    box-shadow:
+      var(--btn-shade),
+      0 0 0 var(--btn-edge),
+      0 0 14px var(--btn-arrow);
+    filter: brightness(1.15);
   }
-  
+
+  /* 계단식 픽셀 화살표 — 외곽선은 부모 drop-shadow로 */
+  .dir-arrow {
+    display: block;
+    filter:
+      drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000)
+      drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000);
+    pointer-events: none;
+  }
+  .dir-arrow::before {
+    content: '';
+    display: block;
+    width: 15px; height: 27px;
+    background: var(--btn-arrow);
+    clip-path: polygon(
+      0 0, 20% 0, 20% 11.1%, 40% 11.1%, 40% 22.2%, 60% 22.2%, 60% 33.3%,
+      80% 33.3%, 80% 44.4%, 100% 44.4%, 100% 55.6%, 80% 55.6%, 80% 66.7%,
+      60% 66.7%, 60% 77.8%, 40% 77.8%, 40% 88.9%, 20% 88.9%, 20% 100%, 0 100%
+    );
+  }
+  .dir-arrow.left  { transform: scaleX(-1) translateX(2px); }
+  .dir-arrow.right { transform: translateX(2px); }
+
+  /* 상황별 버튼 색 */
+  .scene-fever .dir-btn {
+    --btn-face: #b45309;
+    --btn-face-hi: #facc15;
+    --btn-edge: #78350f;
+    --btn-rim: #fff7cc;
+    --btn-shade: 0 0 transparent;
+    --btn-arrow: #ffffff;
+  }
+  .scene-out .dir-btn {
+    --btn-face: #3f3f46;
+    --btn-face-hi: #71717a;
+    --btn-edge: #18181b;
+    --btn-rim: #a1a1aa;
+    --btn-shade: 0 0 transparent;
+    --btn-arrow: #e4e4e7;
+  }
+
   /* ── 결과 팝업 텍스트 ── */
   .result-pop {
     position: absolute;
