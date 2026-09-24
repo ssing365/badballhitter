@@ -6,6 +6,8 @@ import './GameResult.css'
 // import { saveScore } from '../lib/supabase'
 
 const BEST_SCORE_KEY = 'bestScore'
+const SHARE_URL = 'https://badballhitter.vercel.app/'
+const TOAST_DURATION_MS = 2000
 
 // 저장된 최고 기록 읽기 (없거나 접근 불가하면 null)
 function readBestScore() {
@@ -41,13 +43,26 @@ export default function GameResult({ stats, onRetry, onHome }) {
     }
   }, [isNewRecord, score])
 
+  // 공유 결과 토스트 메시지 (null이면 숨김)
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), TOAST_DURATION_MS)
+    return () => clearTimeout(id)
+  }, [toast])
+
+  // 네이티브 공유 시트 대신 클립보드 복사만 사용
   const handleShare = () => {
-    const text = `BadBallHitter — ${score.toLocaleString()} pts!\nHits ${correct} / Max combo ${maxCombo}\nhttps://badballhitter.com`
-    if (navigator.share) {
-      navigator.share({ title: 'BadBallHitter', text })
-    } else {
-      navigator.clipboard.writeText(text).then(() => alert('Result copied to clipboard!'))
+    const text = `I scored ${score.toLocaleString('en-US')} on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
+    if (!navigator.clipboard) {
+      setToast('Copy failed 😢')
+      return
     }
+    navigator.clipboard.writeText(text).then(
+      () => setToast('Copied to clipboard!'),
+      () => setToast('Copy failed 😢'),
+    )
   }
 
   return (
@@ -71,11 +86,12 @@ export default function GameResult({ stats, onRetry, onHome }) {
 
       <div className="result-actions">
         <button className="btn-retry" onClick={onRetry}>Play Again</button>
-        <button className="btn-share" onClick={handleShare}>Share ↗</button>
+        <button className="btn-share" onClick={handleShare}>Share</button>
       </div>
       {onHome && (
         <button className="btn-home" onClick={onHome}>Back to Title</button>
       )}
+      {toast && <div className="result-toast">{toast}</div>}
     </div>
   )
 }
