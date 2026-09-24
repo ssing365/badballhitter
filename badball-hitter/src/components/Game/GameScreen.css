@@ -8,6 +8,10 @@
   margin: 0 auto;
   overflow: hidden;
   container-type: size;  /* 자식에서 cqh 단위 사용 */
+  --pixel-font: 'Press Start 2P', monospace;
+  --pixel-outline:
+    2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000,
+    2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
   background: url('/assets/bg.jpg') center / cover no-repeat;
 }
 
@@ -73,11 +77,102 @@
     gap: 1px;
   }
   
-  .hud-score {
-    font-size: 22px;
+  /* ── 우상단 콤보 — 10콤보마다 색/크기/글로우 강화 ── */
+  .combo-label {
+    font-size: 12px;
     font-weight: 700;
-    color: white;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .hud-combo {
+    font-family: var(--pixel-font);
     line-height: 1;
+    margin-top: 4px;
+    color: #fff;
+    font-size: 18px;
+    transition: color 0.2s, font-size 0.2s;
+  }
+
+  .hud-combo.zero { opacity: 0.45; }
+
+  .combo-num {
+    display: inline-block;
+    transform-origin: right center;
+    animation: combo-bump 0.22s ease-out;
+  }
+
+  @keyframes combo-bump {
+    0%   { transform: scale(1.5); }
+    100% { transform: scale(1); }
+  }
+
+  .hud-combo.combo-lv-1 {
+    color: #facc15; font-size: 20px;
+    text-shadow: 0 0 6px rgba(250, 204, 21, 0.6);
+  }
+  .hud-combo.combo-lv-2 {
+    color: #fb923c; font-size: 22px;
+    text-shadow: var(--pixel-outline), 0 0 8px rgba(251, 146, 60, 0.8);
+  }
+  .hud-combo.combo-lv-3 {
+    color: #ef4444; font-size: 24px;
+    text-shadow: var(--pixel-outline), 0 0 12px rgba(239, 68, 68, 0.9);
+  }
+  .hud-combo.combo-lv-4 {
+    color: #e879f9; font-size: 26px;
+    text-shadow: var(--pixel-outline), 0 0 14px rgba(232, 121, 249, 1), 0 0 24px rgba(232, 121, 249, 0.6);
+  }
+  .hud-combo.combo-lv-5 {
+    font-size: 28px;
+    animation: combo-fire 0.6s steps(3) infinite;
+  }
+
+  /* 50콤보+ 불꽃 — 노랑/주황/빨강 깜빡임 */
+  @keyframes combo-fire {
+    0%   { color: #fde047; text-shadow: var(--pixel-outline), 0 0 16px #f97316, 0 0 28px #ef4444; }
+    50%  { color: #f97316; text-shadow: var(--pixel-outline), 0 0 20px #ef4444, 0 0 32px #facc15; }
+    100% { color: #fde047; text-shadow: var(--pixel-outline), 0 0 16px #f97316, 0 0 28px #ef4444; }
+  }
+
+  /* ── 배경 전광판 점수 (bg.jpg 전광판 화면: x 268~535, y 171~249 / 800×1120) ── */
+  .scoreboard {
+    position: absolute;
+    top: 15.3cqh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 23.8cqh;
+    height: 7cqh;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8cqh;
+    font-family: var(--pixel-font);
+    pointer-events: none;
+  }
+
+  .scoreboard-label {
+    font-size: 1.1cqh;
+    color: rgba(251, 191, 36, 0.6);
+    letter-spacing: 0.15em;
+  }
+
+  .scoreboard-num {
+    font-size: 2.6cqh;
+    line-height: 1;
+    color: #fbbf24;
+    text-shadow: 0 0 4px rgba(251, 191, 36, 0.9), 0 0 10px rgba(245, 158, 11, 0.6);
+    animation: led-flash 0.25s ease-out;
+  }
+
+  .scoreboard-num.long { font-size: 2cqh; }
+
+  /* 점수 갱신 시 LED 번쩍 */
+  @keyframes led-flash {
+    0%   { color: #fff; text-shadow: 0 0 8px #fff, 0 0 16px #fbbf24; }
+    100% { color: #fbbf24; }
   }
   
   /* ── 투수 ── */
@@ -337,13 +432,22 @@
     position: absolute;
     top: 42%; left: 50%;
     transform: translateX(-50%);
-    font-size: 17px;
-    font-weight: 600;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+    font-family: var(--pixel-font);
+    font-size: 18px;
+    line-height: 1.5;
+    text-align: center;
+    text-shadow: var(--pixel-outline), 0 4px 8px rgba(0, 0, 0, 0.6);
     z-index: 40;
     pointer-events: none;
-    white-space: nowrap;
+    white-space: pre;
     transition: opacity 0.3s;
+    animation: pop-in 0.25s ease-out;
+  }
+
+  @keyframes pop-in {
+    0%   { transform: translateX(-50%) scale(0.4); }
+    60%  { transform: translateX(-50%) scale(1.25); }
+    100% { transform: translateX(-50%) scale(1); }
   }
   
   /* ── 피버 ── */
@@ -364,10 +468,10 @@
   }
   
   .fever-title {
-    font-size: 24px;
-    font-weight: 700;
+    font-family: var(--pixel-font);
+    font-size: 22px;
     color: #facc15;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    text-shadow: var(--pixel-outline), 0 2px 8px rgba(0,0,0,0.5);
   }
   
   .fever-sub {
@@ -377,8 +481,9 @@
   }
   
   .fever-count {
-    font-size: 34px;
-    font-weight: 700;
+    font-family: var(--pixel-font);
+    font-size: 32px;
+    text-shadow: var(--pixel-outline);
     color: white;
     margin-top: 6px;
   }

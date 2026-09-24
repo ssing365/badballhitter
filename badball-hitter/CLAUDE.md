@@ -111,6 +111,10 @@ stopBgm()
   max-height: 700px;   /* 태블릿 대응 */
 }
 ```
+- `.game-screen`은 `container-type: size` — 자식에서 `cqh` 단위 사용 (배경이 높이 기준 cover라 배경 위치 맞출 때 유용)
+- 점수: 배경 전광판 화면 위 `.scoreboard` (top 15.3cqh, 23.8×7cqh, 앰버 LED 픽셀 폰트)
+- 우상단 HUD: 콤보 숫자 — 10콤보마다 `combo-lv-0~5`로 색/크기/글로우 강화 (50+ 불꽃 깜빡임)
+- 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
 - 공 레인: width 54px, 중앙 세로
 - 공 아이템: 48×48px
 - 힌트 공: 48×48px

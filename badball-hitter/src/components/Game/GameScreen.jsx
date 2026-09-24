@@ -47,7 +47,7 @@ export default function GameScreen({ onGameOver }) {
   const [flyDir, setFlyDir] = useState(null)         // 'left' | 'right' | null
   const [pitcherThrowing, setPitcherThrowing] = useState(false)
   const [swingDir, setSwingDir] = useState(null)     // 'left' | 'right' | null
-  const [popMsg, setPopMsg] = useState({ text: '', color: '', visible: false })
+  const [popMsg, setPopMsg] = useState({ id: 0, text: '', color: '', visible: false })
   const [timerColor, setTimerColor] = useState('#4ade80')
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
@@ -67,6 +67,7 @@ export default function GameScreen({ onGameOver }) {
   const swingTimeout = useRef(null)
   const feverActiveRef = useRef(false)
   const nextFeverAtRef = useRef(randInt(FEVER_FIRST_RANGE))  // 다음 피버 발동 콤보
+  const popTimeout = useRef(null)
 
   // ── 타자 스윙 애니메이션 ──
   const triggerSwing = useCallback((dir) => {
@@ -76,9 +77,11 @@ export default function GameScreen({ onGameOver }) {
   }, [])
 
   // ── 팝업 표시 ──
+  // id 증가로 매번 등장 애니메이션 재생, 이전 팝업의 숨김 타이머는 취소
   const showPop = useCallback((text, color) => {
-    setPopMsg({ text, color, visible: true })
-    setTimeout(() => setPopMsg((p) => ({ ...p, visible: false })), 850)
+    clearTimeout(popTimeout.current)
+    setPopMsg((p) => ({ id: p.id + 1, text, color, visible: true }))
+    popTimeout.current = setTimeout(() => setPopMsg((p) => ({ ...p, visible: false })), 850)
   }, [])
 
   // ── 타이머 시작 ──
@@ -118,7 +121,7 @@ export default function GameScreen({ onGameOver }) {
     feverActiveRef.current = false
     setFever(false)
     const { feverTaps: taps } = stateRef.current
-    showPop(`Fever +${taps * 50}!`, '#facc15')
+    showPop(`FEVER +${(taps * 50).toLocaleString()}`, '#facc15')
     // 피버 종료 후 타이머 재시작
     setTimeout(() => startTimer(), 300)
   }, [showPop, startTimer])
@@ -162,7 +165,7 @@ export default function GameScreen({ onGameOver }) {
     const { outs: curOuts, queue: curQueue, unlockStep: curUnlockStep, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
     nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
-    showPop('Time up!', '#ef4444')
+    showPop('TIME UP!', '#ef4444')
     const newOuts = curOuts + 1
     setOuts(newOuts)
     if (newOuts >= 3) {
@@ -239,7 +242,7 @@ export default function GameScreen({ onGameOver }) {
       setScore(newScore)
       setCorrect(newCorrect)
       setClassified(newClassified)
-      showPop(newCombo > 1 ? `${newCombo} combo! +${pts}` : `Nice! +${pts}`, '#4ade80')
+      showPop(`+${pts}`, '#4ade80')
 
       // 구종 해금 (첫 공은 콤보, 이후는 점수 기준)
       const reachedStep = getUnlockStep(curUnlockStep, newCombo, newScore)
@@ -263,14 +266,14 @@ export default function GameScreen({ onGameOver }) {
 
         const addedLabels = PITCH_UNLOCK_ORDER.slice(curUnlockStep, reachedStep)
           .map((id) => PITCHES[id].label)
-        setTimeout(() => showPop(`New pitch! ${addedLabels.join(', ')}`, '#facc15'), 450)
+        setTimeout(() => showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, '#facc15'), 450)
       }
     } else {
       const newOuts = curOuts + 1
       setCombo(0)
       nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
       setClassified(newClassified)
-      showPop('Miss! ❌', '#ef4444')
+      showPop('MISS!', '#ef4444')
       setOuts(newOuts)
       if (newOuts >= 3) {
         setTimeout(() => handleGameOver(), 300)
@@ -298,6 +301,7 @@ export default function GameScreen({ onGameOver }) {
       cancelAnimationFrame(timerRaf.current)
       clearInterval(feverTimer.current)
       clearTimeout(swingTimeout.current)
+      clearTimeout(popTimeout.current)
     }
   }, []) // eslint-disable-line
 
@@ -343,6 +347,10 @@ export default function GameScreen({ onGameOver }) {
     )
   }
 
+  // 10콤보마다 콤보 숫자 스타일 단계 상승 (최대 5)
+  const comboLevel = Math.min(Math.floor(combo / 10), 5)
+  const scoreText = score.toLocaleString()
+
   // 힌트 아이템 — 중앙 기준 오프셋으로 배치 (새 공이 위에 추가되면 기존 공이 내려감)
   const renderHint = (bt, i, list) => (
     <div
@@ -371,9 +379,22 @@ export default function GameScreen({ onGameOver }) {
           </div>
         </div>
         <div className="hud-right">
-          <span className="hud-label">SCORE</span>
-          <div className="hud-score">{score.toLocaleString()}</div>
+          <span className="hud-label combo-label">COMBO</span>
+          <div className={`hud-combo combo-lv-${comboLevel}${combo === 0 ? ' zero' : ''}`}>
+            <span key={combo} className="combo-num">{combo}</span>
+          </div>
         </div>
+      </div>
+
+      {/* 배경 전광판 위 점수 */}
+      <div className="scoreboard">
+        <span className="scoreboard-label">SCORE</span>
+        <span
+          key={score}
+          className={`scoreboard-num${scoreText.length > 7 ? ' long' : ''}`}
+        >
+          {scoreText}
+        </span>
       </div>
 
       {/* 투수 */}
@@ -446,6 +467,7 @@ export default function GameScreen({ onGameOver }) {
 
       {/* 결과 팝업 */}
       <div
+        key={popMsg.id}
         className="result-pop"
         style={{ color: popMsg.color, opacity: popMsg.visible ? 1 : 0 }}
       >
