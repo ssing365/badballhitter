@@ -26,9 +26,21 @@
   .result-grade {
     font-size: 13px;
     color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+
+  .result-best {
+    font-size: 14px;
+    color: #64748b;
     margin-bottom: 1.5rem;
   }
-  
+
+  .result-new-record {
+    margin-left: 6px;
+    font-weight: 700;
+    color: #1D9E75;
+  }
+
   .stat-list {
     border-top: 1px solid #f1f5f9;
     margin-bottom: 1.5rem;
