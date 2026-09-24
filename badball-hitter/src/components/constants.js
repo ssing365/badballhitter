@@ -8,17 +8,12 @@ export const PITCHES = {
   changeup:  { id: 'changeup',  label: 'Changeup',  text: 'C',  color: '#22c55e', border: '#16a34a' },
   forkball:  { id: 'forkball',  label: 'Forkball',  text: 'F',  color: '#a855f7', border: '#9333ea' },
   curve:     { id: 'curve',     label: 'Curve',     text: 'C',  color: '#ef4444', border: '#dc2626' },
-  twoseam:   { id: 'twoseam',   label: '2-Seam',    text: '2',  color: '#06b6d4', border: '#0891b2' },
-  fourseam:  { id: 'fourseam',  label: '4-Seam',    text: '4',  color: '#f97316', border: '#ea580c' },
-  splitter:  { id: 'splitter',  label: 'Splitter',  text: 'S',  color: '#ec4899', border: '#db2777' },
-  sinker:    { id: 'sinker',    label: 'Sinker',    text: 'S',  color: '#84cc16', border: '#65a30d' },
-  knuckle:   { id: 'knuckle',   label: 'Knuckle',   text: 'N',  color: '#6366f1', border: '#4f46e5' },
   sweeper:   { id: 'sweeper',   label: 'Sweeper',   text: 'SW', color: '#14b8a6', border: '#0d9488' },
 }
 
-// 공 이미지 적용 구종 (8구종 중 마지막 2개 제외 → 6개)
+// 공 이미지 적용 구종 (전 구종)
 export const IMAGE_PITCH_IDS = [
-  'fastball', 'slider', 'changeup', 'forkball', 'curve', 'twoseam',
+  'fastball', 'slider', 'changeup', 'forkball', 'curve', 'sweeper',
 ]
 
 export const COLOR_BALL_FILES = ['blue', 'green', 'purple', 'red', 'nurcle']
@@ -27,8 +22,7 @@ export const createPitchBallImages = () => {
   const shuffled = [...COLOR_BALL_FILES].sort(() => Math.random() - 0.5)
   const images = {
     fastball: '/assets/balls/white.png',
-    fourseam: '/assets/balls/white.png',
-  }
+    }
   IMAGE_PITCH_IDS.slice(1).forEach((id, i) => {
     images[id] = `/assets/balls/${shuffled[i]}.png`
   })
@@ -38,24 +32,19 @@ export const createPitchBallImages = () => {
 export const getPitchBallImage = (pitchId, pitchBallImages) =>
   pitchBallImages[pitchId] ?? null
 
-// 콤보 N마다 2구종씩 해금 (개발용: 20콤보)
-export const COMBO_UNLOCK_INTERVAL = 20
-export const MAX_PITCH_TIER = 4
+// 시작 구종 2개 — 좌/우 하나씩 랜덤 배치
+export const BASE_PITCHES = ['fastball', 'slider']
 
-// 티어별 해금 구종 (2개씩)
-export const PITCH_UNLOCK_TIERS = [
-  ['fastball', 'slider'],
-  ['changeup', 'forkball'],
-  ['curve', 'twoseam'],
-  ['splitter', 'sinker'],
-  ['knuckle', 'sweeper'],
+// 이후 1구종씩 해금 — 현재 콤보 AND 누적 점수 조건 (순서대로만 해금)
+export const PITCH_UNLOCKS = [
+  { id: 'changeup', combo: 20, score: 0 },
+  { id: 'forkball', combo: 10, score: 30000 },
+  { id: 'curve',    combo: 15, score: 50000 },
+  { id: 'sweeper',  combo: 20, score: 80000 },
 ]
+export const PITCH_UNLOCK_ORDER = PITCH_UNLOCKS.map((u) => u.id)
 
-// 티어 2(40콤보)부터 직구 → 포심 교체
-export const FASTBALL_REPLACED_AT_TIER = 2
-export const FASTBALL_REPLACEMENT = 'fourseam'
-
-// 티어당 2구종을 좌/우에 하나씩 배치 (어느 구종이 어느 쪽인지는 랜덤)
+// 두 구종을 좌/우에 하나씩 배치 (어느 구종이 어느 쪽인지는 랜덤)
 export const assignPairDirs = (dirs, idA, idB) => {
   const aNew = !dirs[idA]
   const bNew = !dirs[idB]
@@ -72,35 +61,37 @@ export const assignPairDirs = (dirs, idA, idB) => {
 
 export const getPitchDir = (pitchId, pitchDirs) => pitchDirs[pitchId]
 
-export const getPitchTierFromCombo = (combo) =>
-  Math.min(Math.floor(combo / COMBO_UNLOCK_INTERVAL), MAX_PITCH_TIER)
+const isUnlockReached = (unlock, combo, score) =>
+  combo >= unlock.combo && score >= unlock.score
 
-export const getUnlockedPitchIds = (tier) => {
-  const ids = []
-  for (let i = 0; i <= tier; i++) {
-    ids.push(...PITCH_UNLOCK_TIERS[i])
+// 현재 단계에서 이어서 조건을 만족한 만큼 해금 단계 증가 (0 = 시작 구종만)
+export const getUnlockStep = (curStep, combo, score) => {
+  let step = curStep
+  while (step < PITCH_UNLOCKS.length && isUnlockReached(PITCH_UNLOCKS[step], combo, score)) {
+    step++
   }
-  if (tier >= FASTBALL_REPLACED_AT_TIER) {
-    const idx = ids.indexOf('fastball')
-    if (idx !== -1) ids[idx] = FASTBALL_REPLACEMENT
-  }
-  return ids
+  return step
 }
 
-export const assignDirsForTier = (tier, existingDirs = {}) => {
+export const getUnlockedPitchIds = (step) => [...BASE_PITCHES, ...PITCH_UNLOCK_ORDER.slice(0, step)]
+
+// 새 구종은 개수가 적은 쪽에 배치, 동률이면 왼쪽
+export const assignDirsForStep = (step, existingDirs = {}) => {
   const dirs = { ...existingDirs }
-  for (let i = 0; i <= tier; i++) {
-    const [idA, idB] = PITCH_UNLOCK_TIERS[i]
-    assignPairDirs(dirs, idA, idB)
-  }
-  if (tier >= FASTBALL_REPLACED_AT_TIER && !dirs[FASTBALL_REPLACEMENT]) {
-    dirs[FASTBALL_REPLACEMENT] = dirs.fastball ?? 'left'
-  }
+  assignPairDirs(dirs, ...BASE_PITCHES)
+  const placed = [...BASE_PITCHES]
+  PITCH_UNLOCK_ORDER.slice(0, step).forEach((id) => {
+    if (!dirs[id]) {
+      const leftCount = placed.filter((p) => dirs[p] === 'left').length
+      dirs[id] = leftCount <= placed.length - leftCount ? 'left' : 'right'
+    }
+    placed.push(id)
+  })
   return dirs
 }
 
-export const getActivePitches = (tier, pitchDirs) =>
-  getUnlockedPitchIds(tier).map((id) => ({
+export const getActivePitches = (step, pitchDirs) =>
+  getUnlockedPitchIds(step).map((id) => ({
     ...PITCHES[id],
     dir: getPitchDir(id, pitchDirs),
   }))

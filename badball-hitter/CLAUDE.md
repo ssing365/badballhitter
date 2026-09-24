@@ -25,7 +25,7 @@ badball-hitter/
 │   │   ├── batter_swing_l.png
 │   │   ├── batter_swing_r.png
 │   │   └── balls/
-│   │       ├── white.png         # 직구/포심 고정
+│   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
 │   │       └── feverball.png     # (미사용)
 │   └── sounds/
@@ -41,7 +41,7 @@ badball-hitter/
 │   ├── lib/
 │   │   └── sound.js          # Howler.js BGM 관리
 │   └── components/
-│       ├── constants.js      # 구종 정의, 해금 티어, 게임 상수 (components/ 안에 위치)
+│       ├── constants.js      # 구종 정의, 해금 단계, 게임 상수 (components/ 안에 위치)
 │       ├── Title/TitleScreen.jsx / .css
 │       ├── Game/GameScreen.jsx / .css
 │       ├── Game/GameResult.jsx / .css
@@ -57,28 +57,29 @@ badball-hitter/
 ## 게임 핵심 로직 (src/components/constants.js)
 
 ### 구종 (PITCHES)
-11개 구종 정의. 각 구종: `id, label, text(공에 표시할 약자), color, border`.
+6개 구종 정의 (fastball, slider, changeup, forkball, curve, sweeper). 각 구종: `id, label, text(공에 표시할 약자), color, border`.
 **방향(dir)은 고정이 아니라 게임 시작·해금 시 랜덤 배정** (`pitchDirs` 상태로 관리, 큐에는 dir 저장 안 함).
 
-### 구종 해금 (콤보 기준)
-- `COMBO_UNLOCK_INTERVAL = 20` 콤보마다 티어 +1 (최대 `MAX_PITCH_TIER = 4`)
-- 티어마다 2구종씩 추가, **한 쌍은 좌/우 하나씩** 랜덤 배치 (`assignPairDirs`)
+### 구종 해금 (콤보·점수 기준)
+- 시작 `BASE_PITCHES`(fastball, slider)는 좌/우 하나씩 랜덤 배치 (`assignPairDirs`)
+- 이후 `PITCH_UNLOCKS` 순서대로 **1구종씩** 해금 — 현재 콤보 AND 누적 점수 조건 (`unlockStep` 상태, `getUnlockStep`). 앞 단계가 해금돼야 다음 단계 조건 검사
+- 새 구종은 개수가 적은 쪽, 동률이면 왼쪽 → 왼쪽부터 좌/우 번갈아 추가 (`assignDirsForStep`)
 
-| 티어 | 콤보 | 추가 구종 |
+| 단계 | 조건 | 추가 구종 (방향) |
 |----|------|---------|
-| 0 | 0 | fastball, slider |
-| 1 | 20 | changeup, forkball |
-| 2 | 40 | curve, twoseam (+ 직구 → 포심 교체) |
-| 3 | 60 | splitter, sinker |
-| 4 | 80 | knuckle, sweeper |
+| 0 | 시작 | fastball, slider (랜덤 좌/우) |
+| 1 | 20콤보 | changeup (좌) |
+| 2 | 30,000점 + 10콤보 | forkball (우) |
+| 3 | 50,000점 + 15콤보 | curve (좌) |
+| 4 | 80,000점 + 20콤보 | sweeper (우) |
 
-- 티어 2부터 `fastball` → `fourseam` 교체 (방향 승계, 대기열 내 직구도 변환)
-- 콤보가 끊겨도 해금된 티어는 유지
+- 콤보가 끊겨도 해금된 단계는 유지
+- 좌/우 힌트: 최신 해금 구종이 맨 위, 각 사이드 세로 중앙 정렬 (`--hint-offset`), 새 공 추가 시 기존 공이 부드럽게 내려감
 
 ### 공 이미지
-- `IMAGE_PITCH_IDS`(fastball, slider, changeup, forkball, curve, twoseam)만 이미지 사용
-- fastball/fourseam = `white.png` 고정, 나머지 5개는 `COLOR_BALL_FILES` 셔플 배정 (`createPitchBallImages`, 게임마다)
-- 이미지 없는 구종(splitter, sinker, knuckle, sweeper)은 color + text 원형으로 렌더
+- 전 구종 이미지 사용 (`IMAGE_PITCH_IDS`)
+- fastball = `white.png` 고정, 나머지 5개는 `COLOR_BALL_FILES` 셔플 배정 (`createPitchBallImages`, 게임마다)
+- 이미지가 없으면 color + text 원형으로 렌더 (폴백)
 
 ### 점수 공식
 `calcScore(combo) = 100 + floor(100 * log2(combo + 1))` — 콤보 복리 증가
@@ -112,9 +113,9 @@ stopBgm()
 ```
 - 공 레인: width 54px, 중앙 세로
 - 공 아이템: 48×48px
-- 힌트 공: 38×38px
+- 힌트 공: 48×48px
 - 방향 버튼: 76×58px
-- 타자/투수 스프라이트: 72×72px
+- 타자/투수 스프라이트: 88×88px
 
 ## 리더보드 / 닉네임 전략 (미구현)
 - **로그인 없음** — 절대 소셜 로그인 붙이지 않음
