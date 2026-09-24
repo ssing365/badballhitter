@@ -45,6 +45,7 @@ badball-hitter/
 │       ├── Title/TitleScreen.jsx / .css
 │       ├── Game/GameScreen.jsx / .css
 │       ├── Game/GameResult.jsx / .css
+│       ├── Game/Crowd.jsx / .css      # 관중석 들썩임 레이어
 │       └── Team/TeamSelect.jsx / .css   # ⚠️ 미사용 + 깨짐 (constants에 없는 TEAMS import, 한글 UI)
 ```
 
@@ -101,6 +102,11 @@ badball-hitter/
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
 - 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Fever Taps / Max Combo / Bat Speed)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
 - 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `HOME RUN!` 배너
+
+## 관중 연출 (Crowd)
+- `bg.jpg` 관중석을 줄×블록×2명 조각으로 잘라 같은 배경을 붙인 레이어가 steps로 점프 (새 픽셀아트 없음)
+- calm(0~9콤보, 열성팬만) / warm(10~29) / hype(30+) / fever(파도) / 아웃 직후 1.2초 멈춤
+- `prefers-reduced-motion`이면 끔
 
 ## BGM 전환 로직 (src/lib/sound.js)
 ```js

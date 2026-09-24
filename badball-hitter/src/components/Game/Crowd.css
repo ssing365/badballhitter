@@ -1,0 +1,59 @@
+/* ── 관중석 들썩임 ──
+   bg.jpg와 같은 좌표계 레이어(높이 기준 cover, 가로 중앙)를 깔고
+   관중석 조각마다 같은 배경을 잘라 붙여 위아래로 튀게 함 */
+.crowd {
+  --u: calc(100cqh / 1120);   /* 원본 bg.jpg 1px */
+  --crowd-amp: 3;             /* 점프 높이 (원본 px) */
+  --crowd-dur: 1.4s;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: calc(800 * var(--u));
+  height: 100cqh;
+  transform: translateX(-50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.crowd-chunk {
+  position: absolute;
+  left: calc(var(--x) * var(--u));
+  top: calc(var(--y) * var(--u));
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+  background: url('/assets/bg.jpg') no-repeat;
+  background-size: calc(800 * var(--u)) 100cqh;
+  background-position: calc(var(--x) * var(--u) * -1) calc(var(--y) * var(--u) * -1);
+  image-rendering: pixelated;
+  will-change: transform;
+  animation: crowd-bob calc(var(--crowd-dur) * var(--j)) steps(1, end) infinite;
+  animation-delay: calc(var(--crowd-dur) * var(--d) * -1);
+}
+
+/* 0~10콤보: 열성 팬만 가끔 */
+.crowd-calm .crowd-chunk:not(.eager) { animation: none; }
+
+/* 10~29콤보 */
+.crowd-warm { --crowd-amp: 4; --crowd-dur: 0.7s; }
+
+/* 30콤보+ */
+.crowd-hype { --crowd-amp: 6; --crowd-dur: 0.42s; }
+
+/* 피버: 전원 크게, 왼쪽→오른쪽 파도 */
+.crowd-fever { --crowd-amp: 9; --crowd-dur: 0.5s; }
+.crowd-fever .crowd-chunk {
+  animation-duration: var(--crowd-dur);
+  animation-delay: calc(var(--crowd-dur) * (1 - var(--wave)) * -1);
+}
+
+/* 아웃 직후: 조용 */
+.crowd.hush .crowd-chunk { animation: none; }
+
+@keyframes crowd-bob {
+  0%  { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--crowd-amp) * var(--u) * -1)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crowd-chunk { animation: none !important; }
+}

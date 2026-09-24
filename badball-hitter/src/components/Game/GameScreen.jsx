@@ -6,6 +6,7 @@ import {
   FEVER_FIRST_RANGE, FEVER_GAP_RANGE, FEVER_UNLOCK_DELAY, FEVER_DURATION, randInt, createPitchBallImages, getPitchBallImage,
   FEVER_TAP_POINTS, calcBatSpeed,
 } from '../constants'
+import Crowd from './Crowd'
 import './GameScreen.css'
 
 // 공 대기열 레이아웃 — 앞(index 0)이 크고, 뒤로 갈수록 작게 겹침
@@ -54,6 +55,7 @@ export default function GameScreen({ onGameOver }) {
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
   const [feverHitBalls, setFeverHitBalls] = useState([]) // 피버 연타 시 날아가는 공들
+  const [crowdHush, setCrowdHush] = useState(false)       // 아웃 직후 관중 조용
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
@@ -354,6 +356,17 @@ export default function GameScreen({ onGameOver }) {
     )
   }
 
+  // 아웃 당하면 관중 잠깐 조용
+  useEffect(() => {
+    if (outs === 0) return
+    setCrowdHush(true)
+    const t = setTimeout(() => setCrowdHush(false), 1200)
+    return () => clearTimeout(t)
+  }, [outs])
+
+  // 관중 분위기 — 피버 > 30콤보+ > 10콤보+ > 평소
+  const crowdMood = fever ? 'fever' : combo >= 30 ? 'hype' : combo >= 10 ? 'warm' : 'calm'
+
   // 10콤보마다 콤보 숫자 스타일 단계 상승 (최대 5)
   const comboLevel = Math.min(Math.floor(combo / 10), 5)
   const scoreText = score.toLocaleString()
@@ -374,6 +387,7 @@ export default function GameScreen({ onGameOver }) {
 
   return (
     <div className="game-screen">
+      <Crowd mood={crowdMood} hush={crowdHush} />
 
       {/* HUD */}
       <div className="hud">
