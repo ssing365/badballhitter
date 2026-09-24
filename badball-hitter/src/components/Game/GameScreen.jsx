@@ -4,6 +4,7 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_FIRST_RANGE, FEVER_GAP_RANGE, FEVER_UNLOCK_DELAY, FEVER_DURATION, randInt, createPitchBallImages, getPitchBallImage,
+  FEVER_TAP_POINTS, calcBatSpeed,
 } from '../constants'
 import './GameScreen.css'
 
@@ -68,6 +69,7 @@ export default function GameScreen({ onGameOver }) {
   const feverActiveRef = useRef(false)
   const nextFeverAtRef = useRef(randInt(FEVER_FIRST_RANGE))  // 다음 피버 발동 콤보
   const popTimeout = useRef(null)
+  const reactionRef = useRef({ sum: 0, count: 0 })  // 정답 스윙 반응시간 누적 (Bat Speed용)
 
   // ── 타자 스윙 애니메이션 ──
   const triggerSwing = useCallback((dir) => {
@@ -121,7 +123,7 @@ export default function GameScreen({ onGameOver }) {
     feverActiveRef.current = false
     setFever(false)
     const { feverTaps: taps } = stateRef.current
-    showPop(`FEVER +${(taps * 50).toLocaleString()}`, '#facc15')
+    showPop(`FEVER +${(taps * FEVER_TAP_POINTS).toLocaleString()}`, '#facc15')
     // 피버 종료 후 타이머 재시작
     setTimeout(() => startTimer(), 300)
   }, [showPop, startTimer])
@@ -146,8 +148,8 @@ export default function GameScreen({ onGameOver }) {
     cancelAnimationFrame(timerRaf.current)
     clearInterval(feverTimer.current)
     const s = stateRef.current
-    // TODO: Supabase — save score
-    // saveScore({ score: s.score, maxCombo: s.maxCombo })
+    const { sum, count } = reactionRef.current
+    // TODO: Supabase — save score (결과 화면의 finalScore 기준)
     setTimeout(() => {
       onGameOver({
         score: s.score,
@@ -155,9 +157,12 @@ export default function GameScreen({ onGameOver }) {
         classified: s.classified,
         maxCombo: s.maxCombo,
         feverTaps: s.feverTaps,
+        unlockStep: s.unlockStep,
+        batSpeed: count > 0 ? calcBatSpeed(sum / count) : null,
+        pitchBallImages,
       })
     }, 400)
-  }, [onGameOver])
+  }, [onGameOver, pitchBallImages])
 
   // ── 시간 초과 처리 ──
   const handleTimeout = useCallback(() => {
@@ -192,7 +197,7 @@ export default function GameScreen({ onGameOver }) {
     if (isFever) {
       triggerSwing(dir)
       const newTaps = curTaps + 1
-      const newScore = curScore + 50
+      const newScore = curScore + FEVER_TAP_POINTS
       setFeverTaps(newTaps)
       setScore(newScore)
 
@@ -231,6 +236,8 @@ export default function GameScreen({ onGameOver }) {
     let nextPitchDirs = curPitchDirs
 
     if (isCorrect) {
+      reactionRef.current.sum += performance.now() - timerStart.current
+      reactionRef.current.count += 1
       const newCombo = curCombo + 1
       const newMax = Math.max(newCombo, curMax)
       const pts = calcScore(newCombo)

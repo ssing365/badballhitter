@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react'
-import { GRADES } from '../constants'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { getGrade, calcFinalBreakdown, getUnlockedPitchIds, PITCH_UNLOCKS, PITCHES } from '../constants'
 import './GameResult.css'
 
-// TODO: Supabase — save score on game over
+// TODO: Supabase — save score on game over (finalScore 기준)
 // import { saveScore } from '../lib/supabase'
 
 const BEST_SCORE_KEY = 'bestScore'
 const SHARE_URL = 'https://badballhitter.vercel.app/'
 const TOAST_DURATION_MS = 2000
+
+// 카운트업 연출 — 첫 행(타격 점수)은 길게, 보너스 행은 짧게
+const STAGE_MS = [1200, 500, 500, 500]
+const EMPTY_STAGE_MS = 150  // 점수 0인 행
+const STAGE_GAP_MS = 250
+const SKIP_GUARD_MS = 500   // 게임 중 연타가 바로 스킵으로 이어지지 않도록
+
+// 전 구종 (해금 순서) — 등급 아래 공 슬롯
+const ALL_PITCH_IDS = getUnlockedPitchIds(PITCH_UNLOCKS.length)
 
 // 저장된 최고 기록 읽기 (없거나 접근 불가하면 null)
 function readBestScore() {
@@ -21,27 +30,87 @@ function readBestScore() {
   }
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+}
+
+const easeOutCubic = (t) => 1 - (1 - t) ** 3
+
 export default function GameResult({ stats, onRetry, onHome }) {
-  const { score, correct, classified, maxCombo, feverTaps } = stats
-  const acc = classified > 0 ? Math.round((correct / classified) * 100) : 0
-  const grade = GRADES.find((g) => acc >= g.minAcc)
+  const { unlockStep = 0, pitchBallImages = {} } = stats
+  const grade = getGrade(unlockStep)
+  const { rows, finalScore } = useMemo(() => calcFinalBreakdown(stats), [stats])
+
+  // 행별 누적 점수 (cumulative[i] = i번째 행 시작값)
+  const cumulative = useMemo(() => {
+    const acc = [0]
+    rows.forEach((r) => acc.push(acc[acc.length - 1] + r.pts))
+    return acc
+  }, [rows])
 
   // 마운트 시 1회만 이전 기록과 비교 (렌더 중에는 읽기만)
   const [{ best, isNewRecord }] = useState(() => {
     const prev = readBestScore()
-    const isNewRecord = score > (prev ?? 0)
-    return { best: isNewRecord ? score : prev, isNewRecord }
+    const isNewRecord = finalScore > (prev ?? 0)
+    return { best: isNewRecord ? finalScore : prev, isNewRecord }
   })
 
   // 신기록이면 localStorage 갱신
   useEffect(() => {
     if (!isNewRecord) return
     try {
-      localStorage.setItem(BEST_SCORE_KEY, String(score))
+      localStorage.setItem(BEST_SCORE_KEY, String(finalScore))
     } catch {
       // 저장 실패는 무시 (프라이빗 모드 등)
     }
-  }, [isNewRecord, score])
+  }, [isNewRecord, finalScore])
+
+  // ── 점수 카운트업 ──
+  // stage = 현재 올라가는 행 index, rows.length면 연출 완료
+  const [stage, setStage] = useState(() => (prefersReducedMotion() ? rows.length : 0))
+  const [shown, setShown] = useState(0)
+  const done = stage >= rows.length
+  const displayScore = done ? finalScore : shown
+
+  useEffect(() => {
+    if (stage >= rows.length) return
+    const from = cumulative[stage]
+    const to = cumulative[stage + 1]
+    const dur = to === from ? EMPTY_STAGE_MS : STAGE_MS[stage]
+    const start = performance.now()
+    let raf = null
+    let gapTimeout = null
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / dur)
+      setShown(Math.round(from + (to - from) * easeOutCubic(t)))
+      if (t < 1) {
+        raf = requestAnimationFrame(tick)
+      } else {
+        gapTimeout = setTimeout(() => setStage((s) => s + 1), STAGE_GAP_MS)
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(gapTimeout)
+    }
+  }, [stage, rows.length, cumulative])
+
+  // 탭 / Enter / Space → 연출 스킵
+  const mountedAt = useRef(performance.now())
+  const skip = useCallback(() => {
+    if (performance.now() - mountedAt.current < SKIP_GUARD_MS) return
+    setStage(rows.length)
+  }, [rows.length])
+
+  useEffect(() => {
+    if (done) return
+    const onKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') skip()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [done, skip])
 
   // 공유 결과 토스트 메시지 (null이면 숨김)
   const [toast, setToast] = useState(null)
@@ -54,7 +123,7 @@ export default function GameResult({ stats, onRetry, onHome }) {
 
   // 네이티브 공유 시트 대신 클립보드 복사만 사용
   const handleShare = () => {
-    const text = `I scored ${score.toLocaleString('en-US')} on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
+    const text = `I scored ${finalScore.toLocaleString('en-US')} (${grade.grade} ${grade.title}) on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
     if (!navigator.clipboard) {
       setToast('Copy failed 😢')
       return
@@ -65,32 +134,90 @@ export default function GameResult({ stats, onRetry, onHome }) {
     )
   }
 
+  const scoreText = displayScore.toLocaleString('en-US')
+  const unlockedCount = ALL_PITCH_IDS.length - PITCH_UNLOCKS.length + unlockStep
+
   return (
-    <div className="result-wrap">
-      <h2>Game Over!</h2>
-      <div className="result-score">{score.toLocaleString()}</div>
-      <div className="result-grade">{grade.label}</div>
-      <div className="result-best">
-        Best: {best != null ? best.toLocaleString() : '-'}
-        {isNewRecord && <span className="result-new-record">🎉 New Record!</span>}
-      </div>
+    <div className="result-screen" onPointerDown={done ? undefined : skip}>
+      <div className="result-scrim" />
+      <div className="result-content">
+        <h2 className="result-title">Game Over</h2>
 
-      <div className="stat-list">
-        <div className="stat-row"><span className="label">Hits</span><span className="value">{correct}</span></div>
-        <div className="stat-row"><span className="label">Max Combo</span><span className="value">{maxCombo}</span></div>
-        <div className="stat-row"><span className="label">Fever Taps</span><span className="value">{feverTaps}</span></div>
-      </div>
+        {/* 전광판 — 최종 점수 카운트업 */}
+        <div className="result-board">
+          <span className="result-board-label">FINAL SCORE</span>
+          <span className={`result-board-num${scoreText.length > 7 ? ' long' : ''}${done ? ' done' : ''}`}>
+            {scoreText}
+          </span>
+        </div>
 
-      {/* TODO: Supabase — top 10 leaderboard */}
-      {/* <Leaderboard currentScore={score} /> */}
+        {/* 최고 기록 / 홈런(신기록) */}
+        <div className={`result-best${done ? ' show' : ''}`}>
+          {isNewRecord ? (
+            <div className="home-run">
+              <span className="home-run-text">HOME RUN!</span>
+              <span className="home-run-sub">New best score</span>
+              <img className="home-run-ball" src="/assets/balls/white.png" alt="" draggable={false} />
+            </div>
+          ) : (
+            <span className="best-text">BEST {best != null ? best.toLocaleString('en-US') : '-'}</span>
+          )}
+        </div>
 
-      <div className="result-actions">
-        <button className="btn-retry" onClick={onRetry}>Play Again</button>
-        <button className="btn-share" onClick={handleShare}>Share</button>
+        {/* 박스 스코어 — 행이 하나씩 켜지며 점수에 더해짐 */}
+        <div className="box-score">
+          <div className="box-score-head">
+            <span>BOX SCORE</span>
+            <span>PTS</span>
+          </div>
+          {rows.map((r, i) => (
+            <div key={r.id} className={`box-row${done || i <= stage ? ' lit' : ''}`}>
+              <span className="box-label">
+                {r.label}
+                {r.sub && <span className="box-sub">{r.sub}</span>}
+              </span>
+              <span className="box-value">{r.value}</span>
+              <span className="box-pts">+{r.pts.toLocaleString('en-US')}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 등급 도장 + 해금 구종 — 카운트업 완료 후 표시 (자리는 미리 확보) */}
+        <div className={`result-grade${done ? ' show' : ''}`} style={{ '--grade-color': grade.color }}>
+          <div className={`grade-stamp grade-${grade.grade.toLowerCase()}`}>{grade.grade}</div>
+          <div className="grade-info">
+            <div className="grade-title">{grade.title}</div>
+            <div className="grade-balls">
+              {ALL_PITCH_IDS.map((id, i) => {
+                const img = pitchBallImages[id]
+                const unlocked = i < unlockedCount
+                return img ? (
+                  <img
+                    key={id}
+                    className={`grade-ball${unlocked ? '' : ' locked'}`}
+                    src={img}
+                    alt={PITCHES[id].label}
+                    draggable={false}
+                  />
+                ) : (
+                  <span key={id} className={`grade-ball fallback${unlocked ? '' : ' locked'}`} style={{ background: PITCHES[id].color }} />
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* TODO: Supabase — top 10 leaderboard */}
+        {/* <Leaderboard currentScore={finalScore} /> */}
+
+        <div className="result-actions">
+          <button className="btn-retry" onClick={onRetry}>Play Again</button>
+          <button className="btn-share" onClick={handleShare}>Share</button>
+        </div>
+        {onHome && (
+          <button className="btn-home" onClick={onHome}>Back to Title</button>
+        )}
       </div>
-      {onHome && (
-        <button className="btn-home" onClick={onHome}>Back to Title</button>
-      )}
       {toast && <div className="result-toast">{toast}</div>}
     </div>
   )

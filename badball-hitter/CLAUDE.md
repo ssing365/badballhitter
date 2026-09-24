@@ -89,7 +89,18 @@ badball-hitter/
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
 - **피버**: 랜덤 목표 콤보에 발동 — 첫 피버 `FEVER_FIRST_RANGE`(15~20), 이후 `FEVER_GAP_RANGE`(12~18) 간격. 콤보 끊기면 첫 피버 범위로 재설정, 구종 해금과 겹치면 `FEVER_UNLOCK_DELAY`(2)콤보 미룸. `FEVER_DURATION = 4`초간 좌우 무관 연타 +50점씩, 타이머 정지·아웃 없음
 - **공 대기열**: `QUEUE_SIZE = 8`개, 앞(index 0)이 크고 뒤로 갈수록 작게 겹쳐 표시
-- **등급(GRADES)**: 정확도 기준 S(90+) / A(75+) / B(55+) / C
+- **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
+
+### Bat Speed / 최종 점수 (결과 화면)
+- **Bat Speed**: 일반 모드 정답 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정답 0개면 `null`
+- **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) + Bat Speed 보너스(`max(0, mph − 50) × hits`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
+- Fever Taps 점수(`× FEVER_TAP_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
+- 최고 기록(localStorage `bestScore`)·공유 문구는 `finalScore` 기준
+
+### 결과 화면 (GameResult)
+- 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
+- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Fever Taps / Max Combo / Bat Speed)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
+- 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `HOME RUN!` 배너
 
 ## BGM 전환 로직 (src/lib/sound.js)
 ```js
@@ -141,7 +152,7 @@ scores (id uuid, nickname text, team_id text, score int,
 ```
 - RLS: scores INSERT 누구나, SELECT 전체 공개
 - `src/lib/supabase.js` 파일 생성해서 연동
-- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps }` (accuracy는 결과 화면에서 계산)
+- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, unlockStep, batSpeed, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
 - 컴포넌트: PascalCase (`GameScreen.jsx`), 화면별 폴더 (`Game/`, `Title/`)

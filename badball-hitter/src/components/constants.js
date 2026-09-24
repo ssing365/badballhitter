@@ -123,10 +123,44 @@ export const FEVER_UNLOCK_DELAY = 2
 // 피버 지속시간 (초)
 export const FEVER_DURATION = 4
 
-// Grade labels
+// 게임 종료 시 해금 단계(표시 구종 수) 기준 등급
 export const GRADES = [
-  { minAcc: 90, label: 'S — Elite eye!' },
-  { minAcc: 75, label: 'A — Starting lineup!' },
-  { minAcc: 55, label: 'B — Needs practice' },
-  { minAcc: 0,  label: 'C — Strikeout king...' },
+  { step: 4, grade: 'SSS', title: 'Hall of Famer',   color: '#facc15' }, // 공 6개
+  { step: 3, grade: 'S',   title: 'All-Star',        color: '#fb923c' }, // 5개
+  { step: 2, grade: 'A',   title: 'Starting Lineup', color: '#4ade80' }, // 4개
+  { step: 1, grade: 'B',   title: 'Bench Warmer',    color: '#60a5fa' }, // 3개
+  { step: 0, grade: 'C',   title: 'Minor Leaguer',   color: '#94a3b8' }, // 2개
 ]
+export const getGrade = (unlockStep) => GRADES.find((g) => unlockStep >= g.step)
+
+// ─────────────────────────────────────────
+// 결과 화면 보너스
+// ─────────────────────────────────────────
+export const FEVER_TAP_POINTS = 50
+export const COMBO_BONUS_PER = 100
+export const BAT_SPEED_BASE_MPH = 50
+
+// 정답 스윙 평균 반응시간(ms) → mph (0.4s≈90, 0.8s≈80, 1.2s≈70, 2.0s≈50)
+export const calcBatSpeed = (avgMs) =>
+  Math.min(99, Math.max(40, Math.round(100 - avgMs / 40)))
+
+// 타율 표기 (.875 / 1.000)
+export const formatAvg = (correct, classified) =>
+  classified > 0 ? (correct / classified).toFixed(3).replace(/^0/, '') : '.000'
+
+// 결과 스탯표 행 + 최종 점수 (행 점수 합 = 최종 점수)
+export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, feverTaps, batSpeed }) => {
+  const feverPts = feverTaps * FEVER_TAP_POINTS
+  const rows = [
+    { id: 'hits',  label: 'Hits',       value: String(correct), sub: `AVG ${formatAvg(correct, classified)}`, pts: score - feverPts },
+    { id: 'fever', label: 'Fever Taps', value: String(feverTaps), pts: feverPts },
+    { id: 'combo', label: 'Max Combo',  value: String(maxCombo), pts: maxCombo * COMBO_BONUS_PER },
+    {
+      id: 'speed', label: 'Bat Speed',
+      value: batSpeed != null ? `${batSpeed} mph` : '—',
+      pts: batSpeed != null ? Math.max(0, batSpeed - BAT_SPEED_BASE_MPH) * correct : 0,
+    },
+  ]
+  const finalScore = rows.reduce((sum, r) => sum + r.pts, 0)
+  return { rows, finalScore }
+}
