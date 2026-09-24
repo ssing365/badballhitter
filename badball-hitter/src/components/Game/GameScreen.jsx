@@ -7,6 +7,7 @@ import {
   FEVER_TAP_POINTS, calcBatSpeed,
 } from '../constants'
 import Crowd from './Crowd'
+import Fielders from './Fielders'
 import './GameScreen.css'
 
 // 공 대기열 레이아웃 — 앞(index 0)이 크고, 뒤로 갈수록 작게 겹침
@@ -55,7 +56,8 @@ export default function GameScreen({ onGameOver }) {
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
   const [feverHitBalls, setFeverHitBalls] = useState([]) // 피버 연타 시 날아가는 공들
-  const [crowdHush, setCrowdHush] = useState(false)       // 아웃 직후 관중 조용
+  const [outFlash, setOutFlash] = useState(false)         // 아웃 직후 연출 (투수 비웃기·화면 흔들림 등)
+  const [swingId, setSwingId] = useState(0)                // 스윙마다 증가 — 스윙 궤적 재생용 key
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
@@ -77,6 +79,7 @@ export default function GameScreen({ onGameOver }) {
   const triggerSwing = useCallback((dir) => {
     clearTimeout(swingTimeout.current)
     setSwingDir(dir)
+    setSwingId((n) => n + 1)
     swingTimeout.current = setTimeout(() => setSwingDir(null), 280)
   }, [])
 
@@ -303,6 +306,7 @@ export default function GameScreen({ onGameOver }) {
 
   // ── 초기화 ──
   useEffect(() => {
+    new Image().src = '/assets/feverpitcher.png'  // 30콤보 진입 시 교체 지연 방지
     const initial = buildQueue([], 0, pitchDirs)
     setQueue(initial)
     startTimer()
@@ -335,7 +339,9 @@ export default function GameScreen({ onGameOver }) {
       : swingDir === 'right' ? '/assets/batter_swing_r.png'
         : '/assets/batter_idle.png'
 
-  const pitcherSrc = '/assets/pitcher_idle.png'
+  // 30콤보+/피버엔 땀 흘리는 투수
+  const pitcherSweat = fever || combo >= 30
+  const pitcherSrc = pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
 
   const renderBall = (pitch, className, size = 'lane') => {
     const img = getPitchBallImage(pitch.id, pitchBallImages)
@@ -356,14 +362,16 @@ export default function GameScreen({ onGameOver }) {
     )
   }
 
-  // 아웃 당하면 관중 잠깐 조용
+  // 아웃 당하면 잠깐 아웃 연출
   useEffect(() => {
     if (outs === 0) return
-    setCrowdHush(true)
-    const t = setTimeout(() => setCrowdHush(false), 1200)
+    setOutFlash(true)
+    const t = setTimeout(() => setOutFlash(false), 1200)
     return () => clearTimeout(t)
   }, [outs])
 
+  // 화면 연출 단계 — 아웃 직후 > 피버 > 30콤보+ > 평소 (.game-screen의 scene-* 클래스로 CSS에서 처리)
+  const sceneMood = outFlash ? 'out' : fever ? 'fever' : combo >= 30 ? 'hype' : 'normal'
   // 관중 분위기 — 피버 > 30콤보+ > 10콤보+ > 평소
   const crowdMood = fever ? 'fever' : combo >= 30 ? 'hype' : combo >= 10 ? 'warm' : 'calm'
 
@@ -386,8 +394,9 @@ export default function GameScreen({ onGameOver }) {
   )
 
   return (
-    <div className="game-screen">
-      <Crowd mood={crowdMood} hush={crowdHush} />
+    <div className={`game-screen scene-${sceneMood}`}>
+      <Crowd mood={crowdMood} hush={outFlash} />
+      <Fielders mood={sceneMood} />
 
       {/* HUD */}
       <div className="hud">
@@ -420,12 +429,15 @@ export default function GameScreen({ onGameOver }) {
 
       {/* 투수 */}
       <div className="pitcher-area">
-        <img
-          className={`pitcher-sprite ${pitcherThrowing ? 'throwing' : ''}`}
-          src={pitcherSrc}
-          alt="투수"
-          draggable={false}
-        />
+        {outFlash && <div key={outs} className="pitcher-taunt">HA!</div>}
+        <div className="pitcher-body">
+          <img
+            className={`pitcher-sprite${pitcherSweat ? ' sweat' : ''}${pitcherThrowing ? ' throwing' : ''}`}
+            src={pitcherSrc}
+            alt="투수"
+            draggable={false}
+          />
+        </div>
       </div>
 
       {/* 공 레인 */}
@@ -477,7 +489,10 @@ export default function GameScreen({ onGameOver }) {
         >
           ◀
         </button>
-        <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
+        <div className="batter-wrap">
+          {swingDir && <div key={swingId} className={`swing-trail ${swingDir}`} />}
+          <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
+        </div>
         <button
           className={`dir-btn ${swingDir === 'right' ? 'pressed' : ''}`}
           onPointerDown={(e) => { e.preventDefault(); judge('right') }}
@@ -485,6 +500,9 @@ export default function GameScreen({ onGameOver }) {
           ▶
         </button>
       </div>
+
+      {/* 아웃 직후 붉은 비네트 */}
+      {outFlash && <div key={outs} className="out-vignette" />}
 
       {/* 결과 팝업 */}
       <div

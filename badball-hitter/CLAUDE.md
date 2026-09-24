@@ -20,7 +20,7 @@ badball-hitter/
 │   ├── assets/               # 픽셀아트 이미지 (PNG)
 │   │   ├── bg.png                # 타이틀/게임 배경
 │   │   ├── pitcher_idle.png
-│   │   ├── feverpitcher.png      # (미사용)
+│   │   ├── feverpitcher.png      # 땀 흘리는 투수 (30콤보+/피버)
 │   │   ├── batter_idle.png
 │   │   ├── batter_swing_l.png
 │   │   ├── batter_swing_r.png
@@ -46,6 +46,7 @@ badball-hitter/
 │       ├── Game/GameScreen.jsx / .css
 │       ├── Game/GameResult.jsx / .css
 │       ├── Game/Crowd.jsx / .css      # 관중석 들썩임 레이어
+│       ├── Game/Fielders.jsx / .css   # 내야 수비수 2명 (유격수·2루수)
 │       └── Team/TeamSelect.jsx / .css   # ⚠️ 미사용 + 깨짐 (constants에 없는 TEAMS import, 한글 UI)
 ```
 
@@ -103,10 +104,16 @@ badball-hitter/
 - 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Fever Taps / Max Combo / Bat Speed)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
 - 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `HOME RUN!` 배너
 
-## 관중 연출 (Crowd)
-- `bg.jpg` 관중석을 줄×블록×2명 조각으로 잘라 같은 배경을 붙인 레이어가 steps로 점프 (새 픽셀아트 없음)
-- calm(0~9콤보, 열성팬만) / warm(10~29) / hype(30+) / fever(파도) / 아웃 직후 1.2초 멈춤
-- `prefers-reduced-motion`이면 끔
+## 상황별 연출 (새 픽셀아트 없이 CSS)
+- `sceneMood` = `'out'`(아웃 후 1.2초, `outFlash`) > `'fever'` > `'hype'`(30콤보+) > `'normal'` → `.game-screen.scene-*` 클래스로 CSS에서 분기
+- 상황별 크기·위치는 CSS 개별 속성(`scale`/`translate`/`rotate`), 반복 모션은 `transform` 애니메이션 — 투수 `throwing` transform과 충돌 방지 (`.pitcher-body`, `.batter-wrap` wrapper)
+- **관중**(`Crowd`): `bg.jpg` 관중석을 줄×블록×2명 조각으로 잘라 steps 점프. calm(0~9, 열성팬만) / warm(10~29) / hype(30+) / fever(파도) / 아웃 시 멈춤
+- **투수**: 평소 숨쉬기 / hype 땀(`feverpitcher.png`, `.sweat`로 크기 보정)+떨림 / 피버 물러나며 크게 떨림 / 아웃 콩콩 점프+좌우반전+"HA!" 말풍선
+- **타자**: hype 1.12배+주황 오라 / 피버 1.4배+불꽃 오라 / 아웃 흑백+풀죽음. 스윙 궤적(`.swing-trail`, `swingId` key) 평소 흰색 / hype 주황 / 피버 금색
+- **수비수**(`Fielders`, 유격수·2루수 2명, `pitcher_idle.png` 축소 재사용): 피버 바깥으로 도망 / 아웃 환호 점프
+- **피버 테두리**: inset box-shadow 3겹 색 순환 + 주황 비네트 + 집중선(`::before` conic-gradient)
+- **아웃**: 화면 흔들림(±4px) + 붉은 비네트(`.out-vignette`)
+- `prefers-reduced-motion`이면 반복 모션·흔들림·깜빡임 끔
 
 ## BGM 전환 로직 (src/lib/sound.js)
 ```js
@@ -186,9 +193,8 @@ scores (id uuid, nickname text, team_id text, score int,
 
 ## 구현 예정
 - 팀 선택/닉네임 화면 (TeamSelect 재작성 — 영어 UI, TEAMS 상수 추가)
-- 피버 타임: 공이 전부 불타는 공(`balls/feverball.png`)으로 교체, 투수 `feverpitcher.png`
+- 피버 타임: 공이 전부 불타는 공(`balls/feverball.png`)으로 교체
 - 효과음 (스윙/포구 — `public/sounds/`에 파일만 있음)
-- 콤보 끊길 때 투수 비웃는 모션 + 화면 흔들림
 - 투수 표정이 콤보에 따라 변화 (10콤보: 당황, 20콤보: 분노)
 - 데일리 챌린지 (매일 고정 시퀀스, 전국 동일 패턴)
 - 개인 기록 그래프 ("어제보다 +230점")
