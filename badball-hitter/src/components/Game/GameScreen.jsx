@@ -3,7 +3,7 @@ import {
   QUEUE_SIZE, TIMER_MAX,
   calcScore, getActivePitches, assignDirsForTier, getPitchTierFromCombo, getPitchDir,
   PITCH_UNLOCK_TIERS, PITCHES, FASTBALL_REPLACED_AT_TIER, FASTBALL_REPLACEMENT,
-  FEVER_COMBO_INTERVAL, FEVER_DURATION, createPitchBallImages, getPitchBallImage,
+  FEVER_FIRST_RANGE, FEVER_GAP_RANGE, FEVER_UNLOCK_DELAY, FEVER_DURATION, randInt, createPitchBallImages, getPitchBallImage,
 } from '../constants'
 import './GameScreen.css'
 
@@ -72,6 +72,7 @@ export default function GameScreen({ onGameOver }) {
   const handleTimeoutRef = useRef(() => { })
   const swingTimeout = useRef(null)
   const feverActiveRef = useRef(false)
+  const nextFeverAtRef = useRef(randInt(FEVER_FIRST_RANGE))  // 다음 피버 발동 콤보
 
   // ── 타자 스윙 애니메이션 ──
   const triggerSwing = useCallback((dir) => {
@@ -166,6 +167,7 @@ export default function GameScreen({ onGameOver }) {
     if (feverActiveRef.current) return
     const { outs: curOuts, queue: curQueue, pitchTier: curPitchTier, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
+    nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
     showPop('Time up!', '#ef4444')
     const newOuts = curOuts + 1
     setOuts(newOuts)
@@ -245,14 +247,21 @@ export default function GameScreen({ onGameOver }) {
       setClassified(newClassified)
       showPop(newCombo > 1 ? `${newCombo} combo! +${pts}` : `Nice! +${pts}`, '#4ade80')
 
-      // 피버 발동
-      if (newCombo % FEVER_COMBO_INTERVAL === 0) {
-        setTimeout(() => startFever(), 200)
-      }
-
       // 콤보 기준 구종 해금 (20콤보마다 2구종)
       const unlockedTier = getPitchTierFromCombo(newCombo)
-      if (unlockedTier > curPitchTier) {
+      const isUnlocking = unlockedTier > curPitchTier
+
+      // 피버 발동 — 해금과 겹치면 새 구종을 먼저 보여주도록 미룸
+      if (newCombo >= nextFeverAtRef.current) {
+        if (isUnlocking) {
+          nextFeverAtRef.current = newCombo + FEVER_UNLOCK_DELAY
+        } else {
+          nextFeverAtRef.current = newCombo + randInt(FEVER_GAP_RANGE)
+          setTimeout(() => startFever(), 200)
+        }
+      }
+
+      if (isUnlocking) {
         nextPitchTier = unlockedTier
         nextPitchDirs = assignDirsForTier(unlockedTier, curPitchDirs)
         setPitchTier(unlockedTier)
@@ -271,6 +280,7 @@ export default function GameScreen({ onGameOver }) {
     } else {
       const newOuts = curOuts + 1
       setCombo(0)
+      nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
       setClassified(newClassified)
       showPop('Miss! ❌', '#ef4444')
       setOuts(newOuts)
