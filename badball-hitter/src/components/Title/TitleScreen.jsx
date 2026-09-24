@@ -1,6 +1,6 @@
 import './TitleScreen.css'
 
-export default function TitleScreen({ onPlay, onRanking }) {
+export default function TitleScreen({ onPlay, onRanking, loading }) {
   return (
     <div className="title-screen">
       <div className="title-scrim" />
@@ -12,8 +12,8 @@ export default function TitleScreen({ onPlay, onRanking }) {
         </h1>
         <p className="game-tagline">Read the pitch. Swing left or right.</p>
 
-        <button className="btn-play-ball" onClick={onPlay}>
-          Play Ball!
+        <button className="btn-play-ball" onClick={onPlay} disabled={loading}>
+          {loading ? 'Loading...' : 'Play Ball!'}
         </button>
 
         <button className="btn-ranking" onClick={onRanking}>

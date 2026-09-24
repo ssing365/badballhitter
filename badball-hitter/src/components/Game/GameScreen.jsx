@@ -14,13 +14,17 @@ const ballLaneLayout = (index) => ({
   '--ball-scale': `${1 - index * 0.085}`,
 })
 
+// 공마다 고유 uid — 렌더 key로 사용 (같은 구종이 연속돼도 공 교체가 보이도록)
+let ballUid = 0
+const nextBallUid = () => ++ballUid
+
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 const buildQueue = (existing, pitchTier, pitchDirs) => {
   const ids = getActivePitches(pitchTier, pitchDirs).map((p) => p.id)
   const result = [...existing]
   while (result.length < QUEUE_SIZE) {
     const id = ids[Math.floor(Math.random() * ids.length)]
-    result.push({ ...PITCHES[id] })
+    result.push({ ...PITCHES[id], uid: nextBallUid() })
   }
   return result
 }
@@ -28,7 +32,7 @@ const buildQueue = (existing, pitchTier, pitchDirs) => {
 // 직구 → 포심 교체 시 대기열 내 공 변환
 const migrateQueuePitch = (queue) =>
   queue.map((ball) =>
-    ball.id === 'fastball' ? { ...PITCHES[FASTBALL_REPLACEMENT] } : ball
+    ball.id === 'fastball' ? { ...PITCHES[FASTBALL_REPLACEMENT], uid: ball.uid } : ball
   )
 
 export default function GameScreen({ onGameOver }) {
@@ -54,7 +58,7 @@ export default function GameScreen({ onGameOver }) {
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
-  const [feverHitBall, setFeverHitBall] = useState(null) // 피버 연타 시 날아가는 공
+  const [feverHitBalls, setFeverHitBalls] = useState([]) // 피버 연타 시 날아가는 공들
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
@@ -67,7 +71,6 @@ export default function GameScreen({ onGameOver }) {
   const judgeLocked = useRef(false)  // 공 처리 중 중복 입력 방지
   const handleTimeoutRef = useRef(() => { })
   const swingTimeout = useRef(null)
-  const feverHitTimeout = useRef(null)
   const feverActiveRef = useRef(false)
 
   // ── 타자 스윙 애니메이션 ──
@@ -190,15 +193,19 @@ export default function GameScreen({ onGameOver }) {
     if (isFever) {
       triggerSwing(dir)
       const newTaps = curTaps + 1
+      const newScore = curScore + 50
       setFeverTaps(newTaps)
-      setScore(curScore + 50)
+      setScore(newScore)
 
+      let nextQueue = curQueue
       if (curQueue.length > 0) {
-        clearTimeout(feverHitTimeout.current)
-        setFeverHitBall({ dir, pitch: curQueue[0] })
-        setQueue(buildQueue(curQueue.slice(1), curPitchTier, curPitchDirs))
-        feverHitTimeout.current = setTimeout(() => setFeverHitBall(null), 220)
+        const hitBall = curQueue[0]
+        nextQueue = buildQueue(curQueue.slice(1), curPitchTier, curPitchDirs)
+        setFeverHitBalls((balls) => [...balls, { dir, pitch: hitBall }])
+        setQueue(nextQueue)
       }
+      // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 즉시 반영
+      stateRef.current = { ...stateRef.current, feverTaps: newTaps, score: newScore, queue: nextQueue }
       return
     }
 
@@ -297,7 +304,6 @@ export default function GameScreen({ onGameOver }) {
       cancelAnimationFrame(timerRaf.current)
       clearInterval(feverTimer.current)
       clearTimeout(swingTimeout.current)
-      clearTimeout(feverHitTimeout.current)
     }
   }, []) // eslint-disable-line
 
@@ -375,21 +381,23 @@ export default function GameScreen({ onGameOver }) {
       <div className="ball-lane">
         {queue.map((bt, i) => (
           <div
-            key={`${bt.id}-${i}`}
+            key={bt.uid}
             className={`ball-item-wrap depth-${i}${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
             style={ballLaneLayout(i)}
           >
             {renderBall(bt, 'ball-item', 'lane')}
           </div>
         ))}
-        {feverHitBall && (
+        {feverHitBalls.map((hit) => (
           <div
-            className={`ball-item-wrap depth-0 fly-${feverHitBall.dir} fever-hit`}
+            key={hit.pitch.uid}
+            className={`ball-item-wrap fever-hit fever-fly-${hit.dir}`}
             style={ballLaneLayout(0)}
+            onAnimationEnd={() => setFeverHitBalls((balls) => balls.filter((b) => b !== hit))}
           >
-            {renderBall(feverHitBall.pitch, 'ball-item', 'lane')}
+            {renderBall(hit.pitch, 'ball-item', 'lane')}
           </div>
-        )}
+        ))}
       </div>
 
       {/* 좌측 힌트 */}
@@ -430,14 +438,14 @@ export default function GameScreen({ onGameOver }) {
       <div className="btn-row">
         <button
           className={`dir-btn ${swingDir === 'left' ? 'pressed' : ''}`}
-          onClick={() => judge('left')}
+          onPointerDown={(e) => { e.preventDefault(); judge('left') }}
         >
           ◀
         </button>
         <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
         <button
           className={`dir-btn ${swingDir === 'right' ? 'pressed' : ''}`}
-          onClick={() => judge('right')}
+          onPointerDown={(e) => { e.preventDefault(); judge('right') }}
         >
           ▶
         </button>

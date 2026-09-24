@@ -8,7 +8,7 @@
   max-height: 700px;
   margin: 0 auto;
   overflow: hidden;
-  background: url('/assets/bg.png') center / cover no-repeat;
+  background: url('/assets/bg.jpg') center / cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,6 +106,12 @@
   box-shadow:
     0 2px 0 #a16207,
     0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.btn-play-ball:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
 }
 
 .btn-ranking {

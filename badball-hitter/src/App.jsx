@@ -4,11 +4,18 @@ import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
 import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
+import { preloadImages } from './lib/preload'
 
 export default function App() {
   const [screen, setScreen] = useState('title') // 'title' | 'playing' | 'result'
   const [stats, setStats] = useState(null)
   const [gameKey, setGameKey] = useState(0)
+  const [assetsReady, setAssetsReady] = useState(false)
+
+  // 게임 이미지 프리로드 — 완료 전엔 Play 버튼 비활성
+  useEffect(() => {
+    preloadImages().then(() => setAssetsReady(true))
+  }, [])
 
   // 화면별 BGM — 단일 진입점
   useEffect(() => {
@@ -65,6 +72,7 @@ export default function App() {
       <TitleScreen
         onPlay={handlePlay}
         onRanking={handleRanking}
+        loading={!assetsReady}
       />
     )
   }

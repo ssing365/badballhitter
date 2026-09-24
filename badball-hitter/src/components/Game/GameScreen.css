@@ -7,7 +7,7 @@
   max-height: 700px;
   margin: 0 auto;
   overflow: hidden;
-  background: url('/assets/bg.png') center / cover no-repeat;
+  background: url('/assets/bg.jpg') center / cover no-repeat;
 }
 
   /* ── HUD ── */
@@ -135,6 +135,21 @@
   .ball-item-wrap.fever-hit {
     z-index: 30;
     pointer-events: none;
+    transition: none;
+  }
+
+  /* 피버 타격 공 — 마운트 즉시 재생되도록 transition 대신 keyframes */
+  .ball-item-wrap.fever-fly-left { animation: fever-fly-left 0.22s ease-out forwards; }
+  .ball-item-wrap.fever-fly-right { animation: fever-fly-right 0.22s ease-out forwards; }
+
+  @keyframes fever-fly-left {
+    from { transform: translateX(-50%) scale(1); opacity: 1; }
+    to { transform: translateX(calc(-50% - 52px)) translateY(-58px) scale(0.45); opacity: 0; }
+  }
+
+  @keyframes fever-fly-right {
+    from { transform: translateX(-50%) scale(1); opacity: 1; }
+    to { transform: translateX(calc(-50% + 52px)) translateY(-58px) scale(0.45); opacity: 0; }
   }
 
   .ball-item,
@@ -273,6 +288,7 @@
   
   .dir-btn {
     width: 76px; height: 58px;
+    touch-action: manipulation; /* 빠른 연타가 더블탭 줌으로 인식되지 않게 */
     border-radius: 30px;
     background: rgba(255,255,255,0.88);
     border: none;
