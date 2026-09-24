@@ -26,10 +26,11 @@ export default function BgmToggle({ inGame = false }) {
         aria-label={muted ? 'Turn music on' : 'Turn music off'}
         aria-pressed={!muted}
       >
-        {/* svg가 fill=currentColor라 mask로 색 지정 */}
+        {/* svg가 fill=currentColor라 mask로 색 지정
+            빌드 시 svg가 data URI로 인라인되며 ' ( ) 가 포함되므로 url()에 따옴표 필수 */}
         <span
           className="bgm-toggle-icon"
-          style={{ maskImage: `url(${icon})`, WebkitMaskImage: `url(${icon})` }}
+          style={{ maskImage: `url("${icon}")`, WebkitMaskImage: `url("${icon}")` }}
         />
       </button>
     </div>
