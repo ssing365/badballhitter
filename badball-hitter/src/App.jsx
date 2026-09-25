@@ -57,6 +57,7 @@ export default function App() {
       <GameScreen
         key={gameKey}
         onGameOver={handleGameOver}
+        onQuit={handleBackToTitle}
       />
     )
   } else if (screen === 'result' && stats) {
@@ -80,7 +81,7 @@ export default function App() {
   return (
     <>
       {content}
-      <BgmToggle inGame={screen === 'playing'} />
+      {screen !== 'playing' && <BgmToggle />}
     </>
   )
 }

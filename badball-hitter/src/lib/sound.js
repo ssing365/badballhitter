@@ -1,4 +1,4 @@
-import { Howl } from 'howler'
+import { Howl, Howler } from 'howler'
 
 const BGM_VOLUME = 0.35
 const BGM_DUCK_RATIO = 0.35    // 피버·결과 화면 연출 중 BGM 볼륨 배율
@@ -16,13 +16,13 @@ const loadMuted = () => {
 }
 
 let muted = loadMuted()
+Howler.mute(muted)
 
 const tracks = {
   normal: new Howl({
     src: [encodeURI('/sounds/Pinball Spring.mp3')],
     loop: true,
     volume: BGM_VOLUME,
-    mute: muted,
     preload: true,
     html5: true,
   }),
@@ -30,18 +30,17 @@ const tracks = {
     src: [encodeURI('/sounds/Pinball Spring 160.mp3')],
     loop: true,
     volume: BGM_VOLUME,
-    mute: muted,
     preload: true,
     html5: true,
   }),
 }
 
-export const isBgmMuted = () => muted
+export const isMuted = () => muted
 
-// 트랙은 계속 재생하고 음소거만 토글 — 화면 전환 로직은 그대로 유지
-export const setBgmMuted = (next) => {
+// BGM·효과음 전체 음소거 (Howler 전역) — 트랙은 계속 재생하고 음소거만 토글
+export const setMuted = (next) => {
   muted = next
-  Object.values(tracks).forEach((howl) => howl.mute(muted))
+  Howler.mute(muted)
   try {
     localStorage.setItem(BGM_MUTED_KEY, muted ? '1' : '0')
   } catch {
@@ -168,9 +167,13 @@ export const playSfx = (name) => {
   sfx[name]?.play()
 }
 
+// 일시정지로 멈춘 효과음 이름 (pauseSfx/resumeSfx)
+const pausedSfx = new Set()
+
 // 재생 중인 효과음을 페이드아웃 후 정지 (피버 종료 등)
 export const stopSfx = (name, fadeMs = 0) => {
   const howl = sfx[name]
+  if (pausedSfx.delete(name)) howl.stop() // 일시정지 상태로 남은 소리 정리
   if (!howl || !howl.playing()) return
   if (fadeMs <= 0) {
     howl.stop()
@@ -182,6 +185,19 @@ export const stopSfx = (name, fadeMs = 0) => {
     howl.volume(vol)
   })
   howl.fade(vol, 0, fadeMs)
+}
+
+// 일시정지 중 재생 중인 효과음을 멈췄다가 이어서 재생
+export const pauseSfx = (name) => {
+  const howl = sfx[name]
+  if (!howl || !howl.playing()) return
+  howl.pause()
+  pausedSfx.add(name)
+}
+
+export const resumeSfx = (name) => {
+  if (!pausedSfx.delete(name)) return
+  sfx[name].play() // 일시정지된 소리가 하나면 Howler가 그 소리를 이어서 재생
 }
 
 // 피버 연타 타격음 — 연타 겹침 대비 풀 확장

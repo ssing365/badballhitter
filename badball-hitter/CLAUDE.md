@@ -87,9 +87,11 @@ badball-hitter/
 `calcScore(combo) = 100 + floor(100 * log2(combo + 1))` — 콤보 복리 증가
 
 ### 게임 규칙
-- **타이머**: 공 하나당 `TIMER_MAX = 3`초 (색상: >2초 초록, >1초 노랑, 이하 빨강)
+- **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색으로 남은 피버 시간을 표시하고 초 숫자도 크게 보여줌(타자 옆 게이지는 숨김)
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
-- **피버**: 랜덤 목표 콤보에 발동 — 첫 피버 `FEVER_FIRST_RANGE`(15~20), 이후 `FEVER_GAP_RANGE`(12~18) 간격. 콤보 끊기면 첫 피버 범위로 재설정, 구종 해금과 겹치면 `FEVER_UNLOCK_DELAY`(2)콤보 미룸. `FEVER_DURATION = 4`초간 좌우 무관 연타 +50점씩, 타이머 정지·아웃 없음
+- **피버 차지 바**(타자 오른쪽 세로 게이지): 정타 1회당 +1, `FEVER_CHARGE_MAX = 15`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과)이나 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 남은 피버 시간을 그림)
+- **피버**: `FEVER_DURATION = 4`초간 좌우 무관 연타, 타이머 정지·아웃 없음. 중앙에 이번 피버 연타 수(`feverRoundTaps`)를 표시하고, 종료 시 `연타 × FEVER_TAP_POINTS(100)`를 한 번에 점수에 더함(전광판 옆 금색 `+N` 팝업)
+- **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Quit(타이틀)
 - **공 대기열**: `QUEUE_SIZE = 8`개, 앞(index 0)이 크고 뒤로 갈수록 작게 겹쳐 표시
 - **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
 
@@ -124,7 +126,8 @@ stopBgm()
 - **크로스페이드 없음** — 다른 트랙은 즉시 stop 후 새 트랙 재생 (fade 레이스 버그 방지 목적)
 - `currentType` 변수로 현재 BGM 추적, 같은 트랙 재생 중이면 무시
 - `App.jsx`의 `useEffect([screen])`가 단일 진입점 + 버튼 클릭 핸들러에서도 동기 호출 (autoplay unlock용)
-- 효과음은 아직 미구현
+- **음소거**: `isMuted/setMuted` — `Howler.mute`로 BGM + 효과음 전체 (localStorage `bgmMuted`). 타이틀·결과는 `BgmToggle`, 게임 중은 일시정지 메뉴
+- 일시정지 중 `pauseSfx/resumeSfx`로 피버 효과음을 멈췄다 이어서 재생
 
 ## 게임 화면 사이즈
 ```css
@@ -137,7 +140,9 @@ stopBgm()
 ```
 - `.game-screen`은 `container-type: size` — 자식에서 `cqh` 단위 사용 (배경이 높이 기준 cover라 배경 위치 맞출 때 유용)
 - 점수: 배경 전광판 화면 위 `.scoreboard` (top 15.3cqh, 23.8×7cqh, 앰버 LED 픽셀 폰트)
-- 우상단 HUD: 콤보 숫자 — 10콤보마다 `combo-lv-0~5`로 색/크기/글로우 강화 (50+ 불꽃 깜빡임)
+- 우상단 HUD: 일시정지 버튼 (`.pause-btn`)
+- 중앙 콤보(`.center-combo`, top 42%): 10콤보마다 `combo-lv-0~5`로 색/크기/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에는 연타 수
+- 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 32%)
 - 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
 - 공 레인: width 54px, 중앙 세로
 - 공 아이템: 48×48px

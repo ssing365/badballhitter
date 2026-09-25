@@ -13,11 +13,6 @@
   pointer-events: none;
 }
 
-/* 게임 중에는 HUD(점수)와 겹치지 않도록 HUD 아래로 */
-.bgm-toggle-layer.in-game {
-  top: 58px;
-}
-
 .bgm-toggle {
   pointer-events: auto;
   width: 32px;

@@ -110,14 +110,13 @@ export const TIMER_MAX = 3
 // 콤보 점수 공식: 100 + floor(100 * log2(combo+1))
 export const calcScore = (combo) => 100 + Math.floor(100 * Math.log2(combo + 1))
 
-// [min, max] 범위 정수 랜덤 (양 끝 포함)
-export const randInt = ([min, max]) => min + Math.floor(Math.random() * (max - min + 1))
+// 피버 차지 — 정타 1회당 1씩 참, MAX 도달 시 피버 (아웃·피버 종료 시 0)
+export const FEVER_CHARGE_MAX = 15
+// 마지막 정타 후 이 시간이 지나면 차지가 서서히 줄어듦 (초당 DECAY_PER_SEC hit)
+export const FEVER_CHARGE_DECAY_DELAY_MS = 1000
+export const FEVER_CHARGE_DECAY_PER_SEC = 2
 
-// 피버 발동 콤보 — 고정 주기 대신 랜덤 목표 (첫 피버 / 이후 간격)
-export const FEVER_FIRST_RANGE = [15, 20]
-export const FEVER_GAP_RANGE = [12, 18]
-
-// 구종 해금과 같은 콤보에 겹치면 피버를 미루는 콤보 수
+// 구종 해금과 같은 hit에 차지가 가득 차면 되돌리는 양 (새 구종을 먼저 보여주기 위해 피버를 미룸)
 export const FEVER_UNLOCK_DELAY = 2
 
 // 피버 지속시간 (초)
@@ -136,7 +135,7 @@ export const getGrade = (unlockStep) => GRADES.find((g) => unlockStep >= g.step)
 // ─────────────────────────────────────────
 // 결과 화면 보너스
 // ─────────────────────────────────────────
-export const FEVER_TAP_POINTS = 50
+export const FEVER_TAP_POINTS = 100
 export const COMBO_BONUS_PER = 100
 export const BAT_SPEED_BASE_MPH = 50
 

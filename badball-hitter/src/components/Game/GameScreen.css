@@ -70,35 +70,70 @@
     transform: scale(1.08);
   }
   
-  .hud-right {
+  /* ── 우상단 일시정지 버튼 ── */
+  .pause-btn {
+    width: 34px;
+    height: 34px;
+    margin-top: 2px;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-  }
-  
-  /* ── 우상단 콤보 — 10콤보마다 색/크기/글로우 강화 ── */
-  .combo-label {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.85);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .hud-combo {
+  .pause-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  }
+
+  /* 픽셀 II 아이콘 */
+  .pause-icon {
+    width: 12px;
+    height: 14px;
+    background:
+      linear-gradient(#fff, #fff) left / 4px 100% no-repeat,
+      linear-gradient(#fff, #fff) right / 4px 100% no-repeat;
+  }
+
+  /* ── 중앙 콤보 (피버 중엔 연타 수) — 10콤보마다 색/크기/글로우 강화 ── */
+  .center-combo {
+    position: absolute;
+    top: 42%; left: 0; right: 0;
+    z-index: 32;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+  }
+
+  .center-label {
+    font-family: var(--pixel-font);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: var(--pixel-outline);
+  }
+
+  .center-num {
     font-family: var(--pixel-font);
     line-height: 1;
-    margin-top: 4px;
     color: #fff;
-    font-size: 18px;
+    font-size: 22px;
+    text-shadow: var(--pixel-outline);
     transition: color 0.2s, font-size 0.2s;
   }
 
-  .hud-combo.zero { opacity: 0.45; }
-
   .combo-num {
     display: inline-block;
-    transform-origin: right center;
+    transform-origin: center;
     animation: combo-bump 0.22s ease-out;
   }
 
@@ -107,26 +142,36 @@
     100% { transform: scale(1); }
   }
 
-  .hud-combo.combo-lv-1 {
-    color: #facc15; font-size: 20px;
-    text-shadow: 0 0 6px rgba(250, 204, 21, 0.6);
+  .center-num.combo-lv-1 {
+    color: #facc15; font-size: 24px;
+    text-shadow: var(--pixel-outline), 0 0 6px rgba(250, 204, 21, 0.6);
   }
-  .hud-combo.combo-lv-2 {
-    color: #fb923c; font-size: 22px;
+  .center-num.combo-lv-2 {
+    color: #fb923c; font-size: 26px;
     text-shadow: var(--pixel-outline), 0 0 8px rgba(251, 146, 60, 0.8);
   }
-  .hud-combo.combo-lv-3 {
-    color: #ef4444; font-size: 24px;
+  .center-num.combo-lv-3 {
+    color: #ef4444; font-size: 28px;
     text-shadow: var(--pixel-outline), 0 0 12px rgba(239, 68, 68, 0.9);
   }
-  .hud-combo.combo-lv-4 {
-    color: #e879f9; font-size: 26px;
+  .center-num.combo-lv-4 {
+    color: #e879f9; font-size: 30px;
     text-shadow: var(--pixel-outline), 0 0 14px rgba(232, 121, 249, 1), 0 0 24px rgba(232, 121, 249, 0.6);
   }
-  .hud-combo.combo-lv-5 {
-    font-size: 28px;
+  .center-num.combo-lv-5 {
+    font-size: 32px;
     animation: combo-fire 0.6s steps(3) infinite;
   }
+
+  /* 피버 연타 수 — 금색 큰 숫자 */
+  .fever-taps { top: 45%; z-index: 37; }
+  .fever-taps .center-label { color: #fde047; font-size: 10px; }
+  .fever-taps .center-num {
+    font-size: 40px;
+    color: #fde047;
+    text-shadow: var(--pixel-outline), 0 0 12px #f97316, 0 0 22px rgba(239, 68, 68, 0.7);
+  }
+  .fever-taps .combo-num { animation-duration: 0.12s; }
 
   /* 50콤보+ 불꽃 — 노랑/주황/빨강 깜빡임 */
   @keyframes combo-fire {
@@ -168,6 +213,45 @@
   }
 
   .scoreboard-num.long { font-size: 2cqh; }
+
+  /* 점수 획득 팝업 — 전광판 오른쪽 끝에서 오른쪽 위로 튀어나옴 */
+  .score-pop {
+    position: absolute;
+    left: calc(100% - 1.5cqh);
+    top: 1.5cqh;
+    font-size: 2.2cqh;
+    line-height: 1;
+    white-space: nowrap;
+    color: #4ade80;
+    text-shadow: var(--pixel-outline), 0 0 8px rgba(74, 222, 128, 0.7);
+    transform-origin: left center;
+    transition: opacity 0.25s;
+    animation: score-pop-out 0.35s ease-out forwards;
+  }
+
+  /* 피버 합계 — 정타 팝업과 겹치지 않게 전광판 아래 중앙에서 따로 */
+  .score-pop.fever {
+    left: 50%;
+    top: calc(100% + 0.8cqh);
+    transform-origin: center top;
+    animation-name: fever-pop-out;
+    animation-duration: 0.45s;
+    font-size: 3cqh;
+    color: #fde047;
+    text-shadow: var(--pixel-outline), 0 0 10px #f97316, 0 0 18px rgba(239, 68, 68, 0.7);
+  }
+
+  @keyframes fever-pop-out {
+    0%   { transform: translate(-50%, -60%) scale(0.4); }
+    60%  { transform: translate(-50%, 10%) scale(1.3); }
+    100% { transform: translate(-50%, 0) scale(1); }
+  }
+
+  @keyframes score-pop-out {
+    0%   { transform: translate(-40%, 30%) scale(0.4); }
+    60%  { transform: translate(6%, -30%) scale(1.25); }
+    100% { transform: translate(0, -20%) scale(1); }
+  }
 
   /* 점수 갱신 시 LED 번쩍 */
   @keyframes led-flash {
@@ -422,8 +506,11 @@
       0 0 6px rgba(0, 0, 0, 0.55);
   }
   
-  /* ── 타이머 ── */
+  /* ── 타이머 — 피버 게이지와 같은 픽셀 바 (피버 중엔 남은 피버 시간) ── */
   .timer-wrap {
+    --timer-fill: linear-gradient(0deg, #15803d 0 35%, #4ade80 35% 100%);
+    --timer-glow: rgba(74, 222, 128, 0.55);
+    --timer-num: #bbf7d0;
     position: absolute;
     bottom: 25%;
     left: 20%; right: 20%;
@@ -431,29 +518,81 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 6px;
+    pointer-events: none;
   }
-  
+
+  .timer-wrap.warn {
+    --timer-fill: linear-gradient(0deg, #a16207 0 35%, #facc15 35% 100%);
+    --timer-glow: rgba(250, 204, 21, 0.55);
+    --timer-num: #fef08a;
+  }
+
+  .timer-wrap.danger {
+    --timer-fill: linear-gradient(0deg, #b91c1c 0 35%, #ef4444 35% 100%);
+    --timer-glow: rgba(239, 68, 68, 0.7);
+    --timer-num: #fecaca;
+  }
+
+  .timer-wrap.danger .timer-track { animation: gauge-glow-danger 0.3s steps(1, end) infinite; }
+
+  /* 피버 — 더 굵고 불꽃색, 남은 시간 크게 */
+  .timer-wrap.fever {
+    --timer-fill: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #fde047 100%);
+    --timer-glow: #f97316;
+    --timer-num: #fde047;
+    left: 12%; right: 12%;
+    z-index: 37;
+  }
+
   .timer-track {
+    position: relative;
     width: 100%;
-    height: 9px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 5px;
+    height: 12px;
+    border: 2px solid #111;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 8px var(--timer-glow);
     overflow: hidden;
   }
-  
+
+  .timer-wrap.fever .timer-track {
+    height: 16px;
+    animation: gauge-glow 0.3s steps(1, end) infinite;
+  }
+
+  /* 채움 — 왼쪽 기준으로 줄어듦 (scaleX는 JS가 매 프레임 갱신) */
   .timer-bar {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 0;
+    background: var(--timer-fill);
     transform-origin: left center;
     will-change: transform;
   }
-  
-  .timer-num {
-    font-size: 11px;
-    color: rgba(255,255,255,0.6);
+
+  /* 1칸 단위 픽셀 눈금 */
+  .timer-track::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(0, 0, 0, 0.35) 10px 12px);
+    pointer-events: none;
   }
-  
+
+  .timer-num {
+    font-family: var(--pixel-font);
+    font-size: 12px;
+    line-height: 1;
+    color: var(--timer-num);
+    text-shadow: var(--pixel-outline);
+  }
+
+  .timer-wrap.fever .timer-num { font-size: 18px; }
+
+  @keyframes gauge-glow-danger {
+    0%  { box-shadow: 0 0 0 1px #fecaca, 0 0 10px #ef4444; }
+    50% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 4px rgba(239, 68, 68, 0.5); }
+  }
+
   /* ── 방향 버튼 + 타자 ── */
   .btn-row {
     position: absolute;
@@ -464,6 +603,62 @@
     padding: 0 6%;
     z-index: 30;
   }
+
+  /* 타자 + 피버 게이지 — 게이지는 타자 크기 변화(batter-wrap scale)와 무관하게 오른쪽에 고정 */
+  .batter-slot {
+    position: relative;
+  }
+
+  .fever-gauge {
+    position: absolute;
+    left: calc(100% + 4px);
+    bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none;
+  }
+
+  .fever-gauge-label {
+    font-family: var(--pixel-font);
+    font-size: 6px;
+    color: #fde047;
+    text-shadow: var(--pixel-outline);
+  }
+
+  .fever-gauge-track {
+    position: relative;
+    width: 10px;
+    height: 96px;
+    border: 2px solid #111;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+  }
+
+  /* 채움 — 아래에서 위로 (scaleY는 JS가 매 프레임 갱신) */
+  .fever-gauge-fill {
+    position: absolute;
+    inset: 0;
+    transform: scaleY(0);
+    transform-origin: bottom center;
+    background: linear-gradient(0deg, #ef4444 0%, #f97316 50%, #fde047 100%);
+    transition: transform 0.15s linear;
+    will-change: transform;
+  }
+
+  /* 거의 다 참 — 반짝임 */
+  .fever-gauge.near-full .fever-gauge-track {
+    animation: gauge-glow 0.3s steps(1, end) infinite;
+  }
+
+  @keyframes gauge-glow {
+    0%  { box-shadow: 0 0 0 1px #fde047, 0 0 8px #f97316; }
+    50% { box-shadow: 0 0 0 1px #fff, 0 0 4px #fde047; }
+  }
+
+  .batter-slot.fever-active .fever-gauge { visibility: hidden; }
 
   /* 타자 wrapper — 상황별 크기·자세 (scale/translate/rotate 개별 속성), 숨쉬기는 transform */
   .batter-wrap {
@@ -634,7 +829,7 @@
   /* ── 결과 팝업 텍스트 ── */
   .result-pop {
     position: absolute;
-    top: 42%; left: 50%;
+    top: 32%; left: 50%;
     transform: translateX(-50%);
     font-family: var(--pixel-font);
     font-size: 18px;
@@ -722,6 +917,10 @@
     .fever-overlay,
     .fever-overlay::before,
     .game-screen.scene-out,
+    .fever-sub,
+    .fever-gauge-track,
+    .timer-track,
+    .score-pop,
     .swing-trail { animation: none !important; }
     .swing-trail { display: none !important; }
     .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
@@ -729,7 +928,7 @@
   
   .fever-ui {
     position: absolute;
-    top: 28%; left: 0; right: 0;
+    top: 24%; left: 0; right: 0;
     z-index: 36;
     text-align: center;
     pointer-events: none;
@@ -743,15 +942,94 @@
   }
   
   .fever-sub {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 5px 8px 4px;
+    font-family: var(--pixel-font);
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: 2px solid #fde047;
+    text-shadow: var(--pixel-outline);
+    animation: tap-away-blink 0.4s steps(1, end) infinite;
+  }
+
+  @keyframes tap-away-blink {
+    0%  { color: #fff; border-color: #fde047; }
+    50% { color: #fde047; border-color: #fff; }
+  }
+
+  /* ── 일시정지 ── */
+  /* 게임 화면 애니메이션 전체 정지 (오버레이 제외) */
+  .game-screen.paused :not(.pause-overlay, .pause-overlay *) {
+    animation-play-state: paused !important;
+  }
+
+  .pause-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .pause-title {
+    font-family: var(--pixel-font);
+    font-size: 26px;
+    color: #fde047;
+    text-shadow: var(--pixel-outline), 0 4px 10px rgba(0, 0, 0, 0.6);
+  }
+
+  .pause-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 200px;
+  }
+
+  /* 크림색 아케이드 버튼 (방향 버튼 톤) */
+  .pause-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 48px;
+    margin-bottom: 5px;
+    padding: 0 12px;
+    font-family: var(--pixel-font);
     font-size: 13px;
-    color: white;
-    margin-top: 4px;
+    color: #3b2f23;
+    border: 3px solid #3b2f23;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fffdf6, #cbb68a);
+    box-shadow: inset 0 -4px 0 rgba(122, 100, 67, 0.35), 0 5px 0 #7a6443, 0 8px 8px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pause-menu-btn:active {
+    transform: translateY(5px);
+    box-shadow: inset 0 -4px 0 rgba(122, 100, 67, 0.35), 0 0 0 #7a6443;
+  }
+
+  .pause-menu-btn.primary { color: #b91c1c; }
+
+  .pause-sound-icon {
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
   }
   
-  .fever-count {
-    font-family: var(--pixel-font);
-    font-size: 32px;
-    text-shadow: var(--pixel-outline);
-    color: white;
-    margin-top: 6px;
-  }
