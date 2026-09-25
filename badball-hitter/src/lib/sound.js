@@ -152,6 +152,7 @@ const sfx = {
   scoreboard: createSfx('scoreboard.wav', 0.7),
   stamp: createSfx('stamp.mp3', 0.8),
   fanfare: createSfx('fanfare.mp3', 0.8),
+  newBall: createSfx('new-ball.wav', 0.7),
 }
 
 // 박스 스코어 행 확정음 — 행마다 음이 올라감

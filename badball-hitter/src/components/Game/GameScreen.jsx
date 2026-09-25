@@ -368,7 +368,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
         const addedLabels = PITCH_UNLOCK_ORDER.slice(curUnlockStep, reachedStep)
           .map((id) => PITCHES[id].label)
-        setTimeout(() => showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, '#facc15'), 450)
+        // 새 구종 팝업과 함께 해금 효과음
+        setTimeout(() => {
+          showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, '#facc15')
+          playSfx('newBall')
+        }, 450)
       }
     } else {
       const newOuts = curOuts + 1
