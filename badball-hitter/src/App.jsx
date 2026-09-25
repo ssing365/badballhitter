@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
@@ -82,6 +83,7 @@ export default function App() {
     <>
       {content}
       {screen !== 'playing' && <BgmToggle />}
+      <Analytics />
     </>
   )
 }
