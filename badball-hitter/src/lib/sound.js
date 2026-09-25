@@ -54,6 +54,45 @@ let ducked = false
 // 현재 목표 BGM 볼륨 — 새 트랙 시작·정지 후 복구도 이 값 기준
 const bgmVolume = () => (ducked ? BGM_VOLUME * BGM_DUCK_RATIO : BGM_VOLUME)
 
+// iOS는 <audio> 요소의 volume을 코드로 못 바꿔서(항상 1) html5 BGM의 volume/fade가 무시됨
+// → BGM audio 요소를 Web Audio GainNode에 연결해 볼륨·덕킹을 gain으로 처리 (스트리밍은 그대로)
+// 연결 실패(Web Audio 미지원 등) 시 bgmGain = null → 기존처럼 Howler volume/fade 사용
+const connectBgmGain = () => {
+  const ctx = Howler.ctx
+  if (!ctx || !Howler.masterGain) return null
+  try {
+    const gain = ctx.createGain()
+    gain.gain.value = bgmVolume()
+    gain.connect(Howler.masterGain) // 전역 음소거(Howler.mute)도 그대로 적용
+    Object.values(tracks).forEach((howl) => {
+      // Howler 비공개 필드 — html5 Howl은 생성 시 load()로 audio 요소 하나를 만들고, 재생마다 재사용
+      howl._sounds.forEach(({ _node: node }) => {
+        ctx.createMediaElementSource(node).connect(gain)
+      })
+    })
+    // Howler는 html5 소리를 재생 중으로 치지 않아 30초 뒤 AudioContext를 suspend → gain 연결된 BGM이 무음이 됨
+    Howler.autoSuspend = false
+    return gain
+  } catch {
+    return null
+  }
+}
+
+const bgmGain = connectBgmGain()
+
+// 트랙(howl) 자체 볼륨 — gain 연결 시 1로 두고 gain에서 조절
+const trackVolume = () => (bgmGain ? 1 : bgmVolume())
+
+// gain을 목표 볼륨으로 (fadeMs 동안 선형 변화, 0이면 즉시)
+const setGainVolume = (fadeMs = 0) => {
+  const { gain } = bgmGain
+  const now = Howler.ctx.currentTime
+  gain.cancelScheduledValues(now)
+  gain.setValueAtTime(gain.value, now)
+  if (fadeMs > 0) gain.linearRampToValueAtTime(bgmVolume(), now + fadeMs / 1000)
+  else gain.setValueAtTime(bgmVolume(), now)
+}
+
 const GESTURE_EVENTS = ['click', 'keydown', 'touchend']
 let waitingGesture = false
 
@@ -68,7 +107,8 @@ const retryOnGesture = () => {
     GESTURE_EVENTS.forEach((ev) => window.removeEventListener(ev, onGesture))
     waitingGesture = false
     const track = currentType && tracks[currentType]
-    if (!track || track.playing()) return
+    // 로딩 중이면 playBgm의 load 리스너가 재생 — 여기서도 play()하면 큐에 쌓여 두 번 재생됨
+    if (!track || track.playing() || track.state() !== 'loaded') return
     track.off('playerror')
     track.once('playerror', retryOnGesture)
     track.play()
@@ -80,7 +120,7 @@ const retryOnGesture = () => {
 const stopTrack = (howl) => {
   howl.off('fade')
   howl.stop()
-  howl.volume(bgmVolume())
+  howl.volume(trackVolume())
 }
 
 export const playBgm = (type) => {
@@ -88,7 +128,8 @@ export const playBgm = (type) => {
   const next = tracks[nextType]
 
   if (currentType === nextType && next.playing()) {
-    next.volume(bgmVolume())
+    if (bgmGain) setGainVolume()
+    else next.volume(bgmVolume())
     return
   }
 
@@ -101,8 +142,13 @@ export const playBgm = (type) => {
   stopTrack(next)
 
   const start = () => {
-    if (currentType !== nextType) return
-    next.volume(bgmVolume())
+    // 다른 트랙으로 바뀌었거나 이미 재생 중이면 건너뜀 (중복 play → BGM 두 겹 방지)
+    if (currentType !== nextType || next.playing()) return
+    next.volume(trackVolume())
+    if (bgmGain) {
+      setGainVolume()
+      if (Howler.ctx.state !== 'running') Howler.ctx.resume().catch(() => {}) // 클릭 직후 호출이면 여기서 unlock
+    }
     next.off('playerror') // 이전 play의 미발생 리스너 정리
     next.once('playerror', retryOnGesture)
     next.play()
@@ -111,8 +157,10 @@ export const playBgm = (type) => {
   if (next.state() === 'loaded') {
     start()
   } else {
+    // 로딩 중 playBgm이 여러 번 호출돼도(클릭 핸들러 + useEffect) load 리스너는 하나만
+    next.off('load')
     next.once('load', start)
-    next.load()
+    if (next.state() === 'unloaded') next.load() // 로딩 중 load() 재호출은 오디오 노드를 하나 더 만듦
   }
 }
 
@@ -227,7 +275,12 @@ export const playFinalScoreDing = () => {
 export const duckBgm = (on) => {
   if (ducked === on) return
   ducked = on
+  const fadeMs = on ? BGM_DUCK_FADE_MS : BGM_UNDUCK_FADE_MS
+  if (bgmGain) {
+    setGainVolume(fadeMs)
+    return
+  }
   const track = currentType && tracks[currentType]
   if (!track || !track.playing()) return // 재생 시작 시 bgmVolume()으로 반영됨
-  track.fade(track.volume(), bgmVolume(), on ? BGM_DUCK_FADE_MS : BGM_UNDUCK_FADE_MS)
+  track.fade(track.volume(), bgmVolume(), fadeMs)
 }
