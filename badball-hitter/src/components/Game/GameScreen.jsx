@@ -6,6 +6,7 @@ import {
   FEVER_FIRST_RANGE, FEVER_GAP_RANGE, FEVER_UNLOCK_DELAY, FEVER_DURATION, randInt, createPitchBallImages, getPitchBallImage,
   FEVER_TAP_POINTS, calcBatSpeed,
 } from '../constants'
+import { playHitSfx, playFeverHitSfx, playMissSfx, playSfx, stopSfx, duckBgm } from '../../lib/sound'
 import Crowd from './Crowd'
 import Fielders from './Fielders'
 import './GameScreen.css'
@@ -127,6 +128,9 @@ export default function GameScreen({ onGameOver }) {
     clearInterval(feverTimer.current)
     feverActiveRef.current = false
     setFever(false)
+    stopSfx('fever', 300)
+    stopSfx('feverCrowd', 600)
+    duckBgm(false)
     const { feverTaps: taps } = stateRef.current
     showPop(`FEVER +${(taps * FEVER_TAP_POINTS).toLocaleString()}`, '#facc15')
     // 피버 종료 후 타이머 재시작
@@ -139,6 +143,9 @@ export default function GameScreen({ onGameOver }) {
     cancelAnimationFrame(timerRaf.current)
     setFever(true)
     setFeverCountdown(FEVER_DURATION)
+    playSfx('fever')
+    playSfx('feverCrowd')
+    duckBgm(true)
 
     let t = FEVER_DURATION
     feverTimer.current = setInterval(() => {
@@ -176,6 +183,7 @@ export default function GameScreen({ onGameOver }) {
     setCombo(0)
     nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
     showPop('TIME UP!', '#ef4444')
+    playSfx('crowdDisappointment')  // 스윙 없이 아웃 — 관중 탄식만
     const newOuts = curOuts + 1
     setOuts(newOuts)
     if (newOuts >= 3) {
@@ -200,6 +208,7 @@ export default function GameScreen({ onGameOver }) {
 
     // 피버 중 — 좌우 구분 없이 연타, 공은 일반처럼 날아감 (아웃 없음)
     if (isFever) {
+      playFeverHitSfx()
       triggerSwing(dir)
       const newTaps = curTaps + 1
       const newScore = curScore + FEVER_TAP_POINTS
@@ -241,6 +250,7 @@ export default function GameScreen({ onGameOver }) {
     let nextPitchDirs = curPitchDirs
 
     if (isCorrect) {
+      playHitSfx()
       reactionRef.current.sum += performance.now() - timerStart.current
       reactionRef.current.count += 1
       const newCombo = curCombo + 1
@@ -282,6 +292,7 @@ export default function GameScreen({ onGameOver }) {
       }
     } else {
       const newOuts = curOuts + 1
+      playMissSfx()
       setCombo(0)
       nextFeverAtRef.current = randInt(FEVER_FIRST_RANGE)
       setClassified(newClassified)
@@ -315,6 +326,9 @@ export default function GameScreen({ onGameOver }) {
       clearInterval(feverTimer.current)
       clearTimeout(swingTimeout.current)
       clearTimeout(popTimeout.current)
+      stopSfx('fever')
+      stopSfx('feverCrowd')
+      duckBgm(false)
     }
   }, []) // eslint-disable-line
 

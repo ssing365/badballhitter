@@ -1,6 +1,9 @@
 import { Howl } from 'howler'
 
 const BGM_VOLUME = 0.35
+const BGM_DUCK_RATIO = 0.35    // 피버·결과 화면 연출 중 BGM 볼륨 배율
+const BGM_DUCK_FADE_MS = 400   // 줄어들 때
+const BGM_UNDUCK_FADE_MS = 1200 // 원래대로 돌아올 때 (천천히 fade in)
 const BGM_MUTED_KEY = 'bgmMuted'
 
 // 재방문 시 BGM on/off 상태 복원 (storage 접근 실패 시 on)
@@ -47,6 +50,10 @@ export const setBgmMuted = (next) => {
 }
 
 let currentType = null
+let ducked = false
+
+// 현재 목표 BGM 볼륨 — 새 트랙 시작·정지 후 복구도 이 값 기준
+const bgmVolume = () => (ducked ? BGM_VOLUME * BGM_DUCK_RATIO : BGM_VOLUME)
 
 const GESTURE_EVENTS = ['click', 'keydown', 'touchend']
 let waitingGesture = false
@@ -74,7 +81,7 @@ const retryOnGesture = () => {
 const stopTrack = (howl) => {
   howl.off('fade')
   howl.stop()
-  howl.volume(BGM_VOLUME)
+  howl.volume(bgmVolume())
 }
 
 export const playBgm = (type) => {
@@ -82,7 +89,7 @@ export const playBgm = (type) => {
   const next = tracks[nextType]
 
   if (currentType === nextType && next.playing()) {
-    next.volume(BGM_VOLUME)
+    next.volume(bgmVolume())
     return
   }
 
@@ -96,7 +103,7 @@ export const playBgm = (type) => {
 
   const start = () => {
     if (currentType !== nextType) return
-    next.volume(BGM_VOLUME)
+    next.volume(bgmVolume())
     next.off('playerror') // 이전 play의 미발생 리스너 정리
     next.once('playerror', retryOnGesture)
     next.play()
@@ -113,4 +120,97 @@ export const playBgm = (type) => {
 export const stopBgm = () => {
   Object.values(tracks).forEach(stopTrack)
   currentType = null
+}
+
+// ── 효과음 ──
+const HIT_SFX_VOLUME = 0.7
+
+// Web Audio(기본값)로 재생 — html5 audio보다 지연이 짧고 연타 시 겹쳐 재생 가능
+const hitSounds = [1, 2, 3].map((n) => new Howl({
+  src: [`/sounds/effects/bat-hit-0${n}.wav`],
+  volume: HIT_SFX_VOLUME,
+  preload: true,
+}))
+
+// 정타 시 배트 타격음 3종 중 하나를 랜덤 재생
+export const playHitSfx = () => {
+  const howl = hitSounds[Math.floor(Math.random() * hitSounds.length)]
+  howl.play()
+}
+
+const createSfx = (file, volume, options = {}) => new Howl({
+  src: [encodeURI(`/sounds/effects/${file}`)],
+  volume,
+  preload: true,
+  ...options,
+})
+
+const sfx = {
+  swoosh: createSfx('bat-swoosh.wav', 0.8),
+  crowdDisappointment: createSfx('crowd disappointment.wav', 0.6),
+  fever: createSfx('fevertime.wav', 0.7),
+  feverCrowd: createSfx('crowd-cheering.wav', 0.6),
+  scoreboard: createSfx('scoreboard.wav', 0.7),
+  stamp: createSfx('stamp.mp3', 0.8),
+  fanfare: createSfx('fanfare.mp3', 0.8),
+}
+
+// 박스 스코어 행 확정음 — 행마다 음이 올라감
+const scoreDings = [
+  'score-ding.mp3',
+  'score-ding_pitch-+2st.wav',
+  'score-ding_pitch-+4st.wav',
+  'score-ding_pitch-+6st.wav',
+].map((file) => createSfx(file, 0.6))
+const finalScoreDing = createSfx('score-ding_pitch-+12st.wav', 0.8)
+
+export const playSfx = (name) => {
+  sfx[name]?.play()
+}
+
+// 재생 중인 효과음을 페이드아웃 후 정지 (피버 종료 등)
+export const stopSfx = (name, fadeMs = 0) => {
+  const howl = sfx[name]
+  if (!howl || !howl.playing()) return
+  if (fadeMs <= 0) {
+    howl.stop()
+    return
+  }
+  const vol = howl.volume()
+  howl.once('fade', () => {
+    howl.stop()
+    howl.volume(vol)
+  })
+  howl.fade(vol, 0, fadeMs)
+}
+
+// 피버 연타 타격음 — 연타 겹침 대비 풀 확장
+const feverHit = createSfx('bat-hit-03.wav', 0.6, { pool: 16 })
+
+export const playFeverHitSfx = () => {
+  feverHit.play()
+}
+
+// 헛스윙 아웃 — 스윙 바람 소리 + 관중 탄식
+export const playMissSfx = () => {
+  sfx.swoosh.play()
+  sfx.crowdDisappointment.play()
+}
+
+// index번째 행 확정음 (행 수가 더 많으면 마지막 음 반복)
+export const playScoreDing = (index) => {
+  scoreDings[Math.min(index, scoreDings.length - 1)].play()
+}
+
+export const playFinalScoreDing = () => {
+  finalScoreDing.play()
+}
+
+// 효과음이 잘 들리도록 BGM을 잠시 줄임 — 끌 때는 천천히 원래 볼륨으로 fade in
+export const duckBgm = (on) => {
+  if (ducked === on) return
+  ducked = on
+  const track = currentType && tracks[currentType]
+  if (!track || !track.playing()) return // 재생 시작 시 bgmVolume()으로 반영됨
+  track.fade(track.volume(), bgmVolume(), on ? BGM_DUCK_FADE_MS : BGM_UNDUCK_FADE_MS)
 }

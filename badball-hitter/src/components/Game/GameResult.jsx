@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { getGrade, calcFinalBreakdown, getUnlockedPitchIds, PITCH_UNLOCKS, PITCHES } from '../constants'
+import { playSfx, playScoreDing, playFinalScoreDing, duckBgm } from '../../lib/sound'
 import './GameResult.css'
 
 // TODO: Supabase — save score on game over (finalScore 기준)
@@ -14,6 +15,7 @@ const STAGE_MS = [1200, 500, 500, 500]
 const EMPTY_STAGE_MS = 150  // 점수 0인 행
 const STAGE_GAP_MS = 250
 const SKIP_GUARD_MS = 500   // 게임 중 연타가 바로 스킵으로 이어지지 않도록
+const FANFARE_DELAY_MS = 600 // 최종 점수·도장 소리 뒤에 팡파르
 
 // 전 구종 (해금 순서) — 등급 아래 공 슬롯
 const ALL_PITCH_IDS = getUnlockedPitchIds(PITCH_UNLOCKS.length)
@@ -86,6 +88,7 @@ export default function GameResult({ stats, onRetry, onHome }) {
       if (t < 1) {
         raf = requestAnimationFrame(tick)
       } else {
+        playScoreDing(stage)
         gapTimeout = setTimeout(() => setStage((s) => s + 1), STAGE_GAP_MS)
       }
     }
@@ -95,6 +98,39 @@ export default function GameResult({ stats, onRetry, onHome }) {
       clearTimeout(gapTimeout)
     }
   }, [stage, rows.length, cumulative])
+
+  // ── 효과음 ── (StrictMode 이중 실행에도 한 번만 재생되도록 ref로 가드)
+  const soundPlayed = useRef({ board: false, final: false, fanfare: false })
+
+  useEffect(() => {
+    if (soundPlayed.current.board) return
+    soundPlayed.current.board = true
+    playSfx('scoreboard')
+  }, [])
+
+  // 카운트업 중에는 BGM을 줄이고, 최종 점수가 나오면(또는 화면을 떠나면) 다시 fade in
+  useEffect(() => {
+    if (done) return
+    duckBgm(true)
+    return () => duckBgm(false)
+  }, [done])
+
+  // 카운트업 완료(스킵 포함) — 최종 점수 띠링 + 등급 도장, 신기록이면 팡파르
+  useEffect(() => {
+    if (!done) return
+    const played = soundPlayed.current
+    if (!played.final) {
+      played.final = true
+      playFinalScoreDing()
+      playSfx('stamp')
+    }
+    if (!isNewRecord || played.fanfare) return
+    const id = setTimeout(() => {
+      played.fanfare = true
+      playSfx('fanfare')
+    }, FANFARE_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [done, isNewRecord])
 
   // 탭 / Enter / Space → 연출 스킵
   const mountedAt = useRef(performance.now())
