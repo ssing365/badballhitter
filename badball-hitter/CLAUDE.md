@@ -99,7 +99,7 @@ badball-hitter/
 - **Bat Speed**: 일반 모드 정답 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정답 0개면 `null`
 - **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) + Bat Speed 보너스(`max(0, mph − 50) × hits`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
 - Fever Taps 점수(`× FEVER_TAP_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
-- 최고 기록(localStorage `bestScore`)·공유 문구는 `finalScore` 기준
+- 최고 기록(localStorage `bestScore`)은 `finalScore` 기준. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P

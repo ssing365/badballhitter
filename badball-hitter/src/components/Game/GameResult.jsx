@@ -7,6 +7,8 @@ import './GameResult.css'
 // import { saveScore } from '../lib/supabase'
 
 const BEST_SCORE_KEY = 'bestScore'
+// 최고 기록을 세운 판의 해금 단계 — 등급은 여기서 계산 (등급 정의가 바뀌어도 안전)
+const BEST_UNLOCK_STEP_KEY = 'bestUnlockStep'
 const SHARE_URL = 'https://badballhitter.vercel.app/'
 const TOAST_DURATION_MS = 2000
 
@@ -20,10 +22,10 @@ const FANFARE_DELAY_MS = 600 // 최종 점수·도장 소리 뒤에 팡파르
 // 전 구종 (해금 순서) — 등급 아래 공 슬롯
 const ALL_PITCH_IDS = getUnlockedPitchIds(PITCH_UNLOCKS.length)
 
-// 저장된 최고 기록 읽기 (없거나 접근 불가하면 null)
-function readBestScore() {
+// 저장된 숫자 읽기 (없거나 접근 불가하면 null)
+function readStoredNumber(key) {
   try {
-    const raw = localStorage.getItem(BEST_SCORE_KEY)
+    const raw = localStorage.getItem(key)
     if (raw === null) return null
     const n = Number(raw)
     return Number.isFinite(n) ? n : null
@@ -51,10 +53,13 @@ export default function GameResult({ stats, onRetry, onHome }) {
   }, [rows])
 
   // 마운트 시 1회만 이전 기록과 비교 (렌더 중에는 읽기만)
-  const [{ best, isNewRecord }] = useState(() => {
-    const prev = readBestScore()
+  const [{ best, bestGrade, isNewRecord }] = useState(() => {
+    const prev = readStoredNumber(BEST_SCORE_KEY)
     const isNewRecord = finalScore > (prev ?? 0)
-    return { best: isNewRecord ? finalScore : prev, isNewRecord }
+    if (isNewRecord) return { best: finalScore, bestGrade: grade, isNewRecord }
+    // 등급 저장 이전에 세운 기록이면 등급 없음
+    const prevStep = readStoredNumber(BEST_UNLOCK_STEP_KEY)
+    return { best: prev, bestGrade: prevStep === null ? null : getGrade(prevStep), isNewRecord }
   })
 
   // 신기록이면 localStorage 갱신
@@ -62,10 +67,11 @@ export default function GameResult({ stats, onRetry, onHome }) {
     if (!isNewRecord) return
     try {
       localStorage.setItem(BEST_SCORE_KEY, String(finalScore))
+      localStorage.setItem(BEST_UNLOCK_STEP_KEY, String(unlockStep))
     } catch {
       // 저장 실패는 무시 (프라이빗 모드 등)
     }
-  }, [isNewRecord, finalScore])
+  }, [isNewRecord, finalScore, unlockStep])
 
   // ── 점수 카운트업 ──
   // stage = 현재 올라가는 행 index, rows.length면 연출 완료
@@ -159,7 +165,12 @@ export default function GameResult({ stats, onRetry, onHome }) {
 
   // 네이티브 공유 시트 대신 클립보드 복사만 사용
   const handleShare = () => {
-    const text = `I scored ${finalScore.toLocaleString('en-US')} (${grade.grade} ${grade.title}) on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
+    // 이번 판이 아니라 개인 최고 기록(점수+등급) 기준으로 공유
+    const bestText = (best ?? finalScore).toLocaleString('en-US')
+    const gradeText = bestGrade ? ` (${bestGrade.grade} ${bestGrade.title})` : ''
+    const text = isNewRecord
+      ? `New personal best! I scored ${bestText}${gradeText} on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
+      : `My best on BadBall Hitter is ${bestText}${gradeText}! Can you beat me? → ${SHARE_URL}`
     if (!navigator.clipboard) {
       setToast('Copy failed 😢')
       return
