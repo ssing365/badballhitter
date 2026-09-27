@@ -160,12 +160,12 @@ export default function GameResult({ stats, onRetry, onHome }) {
       ? `BadBall Hitter 최고 기록 경신! ${bestText}점${gradeText} 달성! 나를 이길 수 있을까? → ${SHARE_URL}`
       : `BadBall Hitter 내 최고 기록은 ${bestText}점${gradeText}! 나를 이길 수 있을까? → ${SHARE_URL}`
     if (!navigator.clipboard) {
-      setToast('Copy failed 😢')
+      setToast('복사하지 못했어요 😢')
       return
     }
     navigator.clipboard.writeText(text).then(
       () => setToast('클립보드에 복사되었어요!'),
-      () => setToast('Copy failed 😢'),
+      () => setToast('복사하지 못했어요 😢'),
     )
   }
 
