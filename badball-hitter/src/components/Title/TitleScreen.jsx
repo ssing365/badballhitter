@@ -10,7 +10,7 @@ export default function TitleScreen({ onPlay, onRanking, loading }) {
           <span className="game-title-ball">Ball</span>
           <span className="game-title-hitter">Hitter</span>
         </h1>
-        <p className="game-tagline">Read the pitch. Swing left or right.</p>
+        <p className="game-tagline">구종을 보고 좌우로 쳐내세요!</p>
 
         <button className="btn-play-ball" onClick={onPlay} disabled={loading}>
           {loading ? 'Loading...' : 'Play Ball!'}

@@ -3,12 +3,12 @@
 // dir는 게임 시작·해금 시 랜덤 배정
 // ─────────────────────────────────────────
 export const PITCHES = {
-  fastball:  { id: 'fastball',  label: 'Fastball',  text: '4',  color: '#f59e0b', border: '#d97706' },
-  slider:    { id: 'slider',    label: 'Slider',    text: 'S',  color: '#3b82f6', border: '#2563eb' },
-  changeup:  { id: 'changeup',  label: 'Changeup',  text: 'C',  color: '#22c55e', border: '#16a34a' },
-  forkball:  { id: 'forkball',  label: 'Forkball',  text: 'F',  color: '#a855f7', border: '#9333ea' },
-  curve:     { id: 'curve',     label: 'Curve',     text: 'C',  color: '#ef4444', border: '#dc2626' },
-  sweeper:   { id: 'sweeper',   label: 'Sweeper',   text: 'SW', color: '#14b8a6', border: '#0d9488' },
+  fastball:  { id: 'fastball',  label: '직구',     text: '직', color: '#f59e0b', border: '#d97706' },
+  slider:    { id: 'slider',    label: '슬라이더', text: '슬', color: '#3b82f6', border: '#2563eb' },
+  changeup:  { id: 'changeup',  label: '체인지업', text: '체', color: '#22c55e', border: '#16a34a' },
+  forkball:  { id: 'forkball',  label: '포크볼',   text: '포', color: '#a855f7', border: '#9333ea' },
+  curve:     { id: 'curve',     label: '커브',     text: '커', color: '#ef4444', border: '#dc2626' },
+  sweeper:   { id: 'sweeper',   label: '스위퍼',   text: '스', color: '#14b8a6', border: '#0d9488' },
 }
 
 // 공 이미지 적용 구종 (전 구종)

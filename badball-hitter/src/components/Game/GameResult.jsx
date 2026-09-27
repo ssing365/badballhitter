@@ -157,14 +157,14 @@ export default function GameResult({ stats, onRetry, onHome }) {
     const bestText = (best ?? finalScore).toLocaleString('en-US')
     const gradeText = bestGrade ? ` (${bestGrade.grade} ${bestGrade.title})` : ''
     const text = isNewRecord
-      ? `New personal best! I scored ${bestText}${gradeText} on BadBall Hitter! Can you beat me? → ${SHARE_URL}`
-      : `My best on BadBall Hitter is ${bestText}${gradeText}! Can you beat me? → ${SHARE_URL}`
+      ? `BadBall Hitter 최고 기록 경신! ${bestText}점${gradeText} 달성! 나를 이길 수 있을까? → ${SHARE_URL}`
+      : `BadBall Hitter 내 최고 기록은 ${bestText}점${gradeText}! 나를 이길 수 있을까? → ${SHARE_URL}`
     if (!navigator.clipboard) {
       setToast('Copy failed 😢')
       return
     }
     navigator.clipboard.writeText(text).then(
-      () => setToast('Copied to clipboard!'),
+      () => setToast('클립보드에 복사되었어요!'),
       () => setToast('Copy failed 😢'),
     )
   }
@@ -246,11 +246,11 @@ export default function GameResult({ stats, onRetry, onHome }) {
         {/* <Leaderboard currentScore={finalScore} /> */}
 
         <div className="result-actions">
-          <button className="btn-retry" onClick={onRetry}>Play Again</button>
-          <button className="btn-share" onClick={handleShare}>Share</button>
+          <button className="btn-retry" onClick={onRetry}>다시 하기</button>
+          <button className="btn-share" onClick={handleShare}>공유하기</button>
         </div>
         {onHome && (
-          <button className="btn-home" onClick={onHome}>Back to Title</button>
+          <button className="btn-home" onClick={onHome}>타이틀로</button>
         )}
       </div>
       {toast && <div className="result-toast">{toast}</div>}

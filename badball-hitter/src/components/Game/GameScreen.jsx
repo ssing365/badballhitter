@@ -751,7 +751,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           <div className="fever-overlay" />
           <div className="fever-ui">
             <div className="fever-title">🔥 FEVER!</div>
-            <div className="fever-sub">TAP AWAY!</div>
+            <div className="fever-sub">마구 눌러요!</div>
           </div>
         </>
       )}

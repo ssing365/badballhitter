@@ -8,7 +8,7 @@
   margin: 0 auto;
   overflow: hidden;
   container-type: size;  /* 자식에서 cqh 단위 사용 */
-  --pixel-font: 'Press Start 2P', monospace;
+  --pixel-font: 'Press Start 2P', 'Galmuri11', monospace;
   --pixel-outline:
     2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000,
     2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
