@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Analytics } from '@vercel/analytics/react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
 import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
 import { preloadImages } from './lib/preload'
+
+// Vercel Analytics — 웹 배포(--mode web)에서만 로드, 앱인토스 번들에서는 빌드 시 제거됨
+const Analytics = import.meta.env.MODE === 'web'
+  ? lazy(() => import('@vercel/analytics/react').then((m) => ({ default: m.Analytics })))
+  : null
 
 export default function App() {
   const [screen, setScreen] = useState('title') // 'title' | 'playing' | 'result'
@@ -83,7 +87,7 @@ export default function App() {
     <>
       {content}
       {screen !== 'playing' && <BgmToggle />}
-      <Analytics />
+      {Analytics && <Suspense fallback={null}><Analytics /></Suspense>}
     </>
   )
 }
