@@ -2,14 +2,15 @@
 
 ## 프로젝트 개요
 야구 테마 웹 캐주얼 게임. 투수가 던지는 공(구종)을 좌/우 방향키로 분류하는 순발력 게임.
-글로벌 배포 타겟 (영어 UI). 피터 레벨스 스타일 — 빠르게 만들고 배포, 데이터 보고 개선.
+앱인토스(토스 미니게임) 출시 타겟 (appName `badball-hitter`). UI는 영어, 구종명·타이틀 태그라인·피버 문구·공유 문구만 한글. 피터 레벨스 스타일 — 빠르게 만들고 배포, 데이터 보고 개선.
 
 ## 기술 스택
 - **Frontend**: React 18 + Vite 5 (JS, TypeScript 아님)
 - **Styling**: 컴포넌트별 일반 `.css` 파일 import (CSS Modules 아님 — 전역 클래스명)
 - **Sound**: Howler.js
 - **Backend/DB**: Supabase (PostgreSQL) — 현재 TODO 상태, 추후 연동
-- **배포**: Vercel
+- **배포**: 앱인토스 (`@apps-in-toss/web-framework` 3.x, `apps-in-toss.config.ts`, `npm run build` → `.ait`) / 웹은 Vercel (`npm run build:web` = `--mode web`, `vercel.json` buildCommand)
+- **분석**: GA(gtag, `vite.config.js` 플러그인)·Vercel Analytics(`App.jsx` lazy)는 `--mode web`에서만 포함 — 앱인토스 번들에는 없음
 - **도메인**: 추후 연결 예정 (공유 텍스트에는 `https://badballhitter.com` 사용 중)
 
 ## 폴더 구조
@@ -39,7 +40,9 @@ badball-hitter/
 │   ├── App.css               # Vite 템플릿 잔재 (미사용)
 │   ├── index.css             # 전역 스타일만 (reset, body)
 │   ├── lib/
-│   │   └── sound.js          # Howler.js BGM 관리
+│   │   ├── sound.js          # Howler.js BGM 관리
+│   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시)
+│   │   └── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
 │   └── components/
 │       ├── constants.js      # 구종 정의, 해금 단계, 게임 상수 (components/ 안에 위치)
 │       ├── Title/TitleScreen.jsx / .css
@@ -53,7 +56,7 @@ badball-hitter/
 ## 화면 흐름 (현재)
 타이틀(`TitleScreen`) → 게임(`GameScreen`) → 결과(`GameResult`) → Play Again / Back to Title
 - 팀 선택/닉네임 입력 화면은 아직 흐름에 없음
-- 타이틀의 Ranking 버튼은 `alert('Ranking coming soon!')`
+- 타이틀의 Ranking 버튼은 토스 게임센터 리더보드(`openLeaderboard`), 토스 밖(웹)에서는 `alert('Ranking coming soon!')`
 - 재시작 시 `gameKey` 증가로 `GameScreen` 리마운트
 
 ## 게임 핵심 로직 (src/components/constants.js)
@@ -99,7 +102,7 @@ badball-hitter/
 - **Bat Speed**: 일반 모드 정답 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정답 0개면 `null`
 - **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) + Bat Speed 보너스(`max(0, mph − 50) × hits`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
 - Fever Taps 점수(`× FEVER_TAP_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
-- 최고 기록(localStorage `bestScore`)은 `finalScore` 기준. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
+- 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
@@ -127,6 +130,7 @@ stopBgm()
 - `currentType` 변수로 현재 BGM 추적, 같은 트랙 재생 중이면 무시
 - `App.jsx`의 `useEffect([screen])`가 단일 진입점 + 버튼 클릭 핸들러에서도 동기 호출 (autoplay unlock용)
 - **음소거**: `isMuted/setMuted` — `Howler.mute`로 BGM + 효과음 전체 (localStorage `bgmMuted`). 타이틀·결과는 `BgmToggle`, 게임 중은 일시정지 메뉴
+- 백그라운드 전환(`visibilitychange`) 시 전역 무음, 복귀 시 음소거 설정으로 복원 (앱인토스 검수 항목)
 - 일시정지 중 `pauseSfx/resumeSfx`로 피버 효과음을 멈췄다 이어서 재생
 
 ## 게임 화면 사이즈
@@ -179,7 +183,9 @@ scores (id uuid, nickname text, team_id text, score int,
 - 상수: UPPER_SNAKE_CASE (`PITCHES`, `QUEUE_SIZE`)
 - 상태관리: `useState` + `useRef` (외부 상태 라이브러리 없음). 콜백 내 최신 상태는 `stateRef.current`로 참조
 - `var` 사용 금지 — `const` / `let` 만 사용
-- 주석은 한글, UI 텍스트는 영어
+- 주석은 한글, UI 텍스트는 영어 (구종명·태그라인·피버 문구·공유 문구는 한글)
+- 픽셀 폰트에 한글이 나오면 `--pixel-font`의 `Galmuri11` 폴백으로 렌더 (Press Start 2P에 한글 없음)
+- 토스 SDK 호출은 `lib/`에 감싸서 try/catch — 토스 밖(웹 배포)에서는 SDK가 throw하므로 폴백 필수
 
 ## 에셋 규칙
 - 픽셀아트 PNG: `public/assets/` 저장 (공은 `public/assets/balls/`)
