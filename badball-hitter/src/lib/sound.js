@@ -18,6 +18,11 @@ const loadMuted = () => {
 let muted = loadMuted()
 Howler.mute(muted)
 
+// 백그라운드 전환(리더보드 열기·홈 이동 등) 시 즉시 무음, 돌아오면 사용자 음소거 설정으로 복원
+document.addEventListener('visibilitychange', () => {
+  Howler.mute(document.hidden || muted)
+})
+
 const tracks = {
   normal: new Howl({
     src: [encodeURI('/sounds/Pinball Spring.mp3')],
