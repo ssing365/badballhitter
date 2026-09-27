@@ -5,6 +5,8 @@ import GameResult from './components/Game/GameResult'
 import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
 import { preloadImages } from './lib/preload'
+import { loadBestRecord } from './lib/records'
+import { openLeaderboard } from './lib/leaderboard'
 
 // Vercel Analytics — 웹 배포(--mode web)에서만 로드, 앱인토스 번들에서는 빌드 시 제거됨
 const Analytics = import.meta.env.MODE === 'web'
@@ -17,9 +19,9 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0)
   const [assetsReady, setAssetsReady] = useState(false)
 
-  // 게임 이미지 프리로드 — 완료 전엔 Play 버튼 비활성
+  // 게임 이미지 프리로드 + 최고 기록 로드 — 완료 전엔 Play 버튼 비활성
   useEffect(() => {
-    preloadImages().then(() => setAssetsReady(true))
+    Promise.all([preloadImages(), loadBestRecord()]).then(() => setAssetsReady(true))
   }, [])
 
   // 화면별 BGM — 단일 진입점
@@ -51,9 +53,10 @@ export default function App() {
     setScreen('title')
   }
 
-  const handleRanking = () => {
+  // 토스 게임센터 리더보드 — 토스 앱 밖(웹 배포)에서는 준비 중 안내
+  const handleRanking = async () => {
     playBgm('normal')
-    alert('Ranking coming soon!')
+    if (!(await openLeaderboard())) alert('Ranking coming soon!')
   }
 
   let content
