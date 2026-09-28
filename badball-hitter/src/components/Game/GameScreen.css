@@ -379,34 +379,75 @@
     filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
   }
 
-  .ball-item-wrap.fly-left {
-    transform: translateX(calc(-50% - 52px)) translateY(-58px) scale(0.45);
-    opacity: 0;
-  }
-
-  .ball-item-wrap.fly-right {
-    transform: translateX(calc(-50% + 52px)) translateY(-58px) scale(0.45);
-    opacity: 0;
-  }
-
-  .ball-item-wrap.fever-hit {
-    z-index: 30;
+  /* ── 처리된 공 연출 레이어 — 레인과 같은 위치, 타자·버튼(z 30) 위 ── */
+  .fly-layer {
+    position: absolute;
+    top: 13%; bottom: calc(25% + 48px);
+    left: 50%; transform: translateX(-50%);
+    width: 54px;
+    z-index: 33;
     pointer-events: none;
-    transition: none;
   }
 
-  /* 피버 타격 공 — 마운트 즉시 재생되도록 transition 대신 keyframes */
-  .ball-item-wrap.fever-fly-left { animation: fever-fly-left 0.22s ease-out forwards; }
-  .ball-item-wrap.fever-fly-right { animation: fever-fly-right 0.22s ease-out forwards; }
+  /* 마운트 즉시 재생되도록 transition 대신 keyframes (끝나면 onAnimationEnd로 제거) */
+  .ball-item-wrap.fly-ball { transition: none; }
 
-  @keyframes fever-fly-left {
-    from { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
-    to { transform: translateX(calc(-50% - 52px)) translateY(-58px) scale(0.45); opacity: 0; }
+  /* 정타 — 친 방향 관중석으로 빠르게 직선으로 뻗으며 작아지고, 끝에서만 살짝 떨어지며 흐려짐
+     좌/우마다 궤적 2개(v0 얕고 옆으로 / v1 깊고 가운데 쪽) 중 랜덤 */
+  .fly-hit-left,
+  .fly-hit-right { animation: fly-hit 0.5s forwards; }
+  .fly-hit-left.v0  { --hit-x: -130px; --hit-y: -240px; }
+  .fly-hit-left.v1  { --hit-x: -70px;  --hit-y: -300px; }
+  .fly-hit-right.v0 { --hit-x: 130px;  --hit-y: -240px; }
+  .fly-hit-right.v1 { --hit-x: 70px;   --hit-y: -300px; }
+
+  /* 헛스윙 — 배트 반대쪽으로 살짝 비켜 타자 몸쪽으로 커지며 지나감 / 시간 초과 — 가운데로 지나감 */
+  .fly-miss-left { animation: fly-miss-left 0.3s ease-in forwards; }
+  .fly-miss-right { animation: fly-miss-right 0.3s ease-in forwards; }
+  .fly-take { animation: fly-take 0.3s ease-in forwards; }
+
+  /* 0→80%: 한 구간이라 직선 (초반이 가장 빠른 감속 곡선) / 80→100%: 이미 작아진 공이 살짝 떨어짐 */
+  @keyframes fly-hit {
+    0% {
+      transform: translateX(-50%) scale(var(--ball-scale));
+      opacity: 1;
+      filter: blur(0);
+      animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1);
+    }
+    80% {
+      transform: translate(calc(-50% + var(--hit-x) * 0.92), var(--hit-y)) scale(0.32);
+      opacity: 0.75;
+      filter: blur(0.5px);
+      animation-timing-function: ease-in;
+    }
+    100% {
+      transform: translate(calc(-50% + var(--hit-x)), calc(var(--hit-y) + 16px)) scale(0.26);
+      opacity: 0;
+      filter: blur(1.5px);
+    }
   }
 
-  @keyframes fever-fly-right {
+  @keyframes fly-miss-left {
+    0%   { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
+    60%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + 22px), 150px) scale(2); opacity: 0; }
+  }
+
+  @keyframes fly-miss-right {
+    0%   { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
+    60%  { opacity: 1; }
+    100% { transform: translate(calc(-50% - 22px), 150px) scale(2); opacity: 0; }
+  }
+
+  @keyframes fly-take {
+    0%   { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
+    60%  { opacity: 1; }
+    100% { transform: translate(-50%, 150px) scale(2); opacity: 0; }
+  }
+
+  @keyframes fly-fade {
     from { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
-    to { transform: translateX(calc(-50% + 52px)) translateY(-58px) scale(0.45); opacity: 0; }
+    to   { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 0; }
   }
 
   .ball-item,
@@ -929,7 +970,7 @@
     .score-pop,
     .swing-trail { animation: none !important; }
     .swing-trail { display: none !important; }
-    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
+    .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
   }
   
   .fever-ui {

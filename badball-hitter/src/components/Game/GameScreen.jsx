@@ -29,6 +29,9 @@ const ballLaneLayout = (index) => ({
 let ballUid = 0
 const nextBallUid = () => ++ballUid
 
+// 정타 궤적 2종 중 랜덤 (CSS .v0 / .v1)
+const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
+
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 const buildQueue = (existing, unlockStep, pitchDirs) => {
   const ids = getActivePitches(unlockStep, pitchDirs).map((p) => p.id)
@@ -56,7 +59,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // ── UI 애니메이션 상태 ──
   const [queue, setQueue] = useState([])
-  const [flyDir, setFlyDir] = useState(null)         // 'left' | 'right' | null
   const [pitcherThrowing, setPitcherThrowing] = useState(false)
   const [swingDir, setSwingDir] = useState(null)     // 'left' | 'right' | null
   const [popMsg, setPopMsg] = useState({ id: 0, text: '', color: '', visible: false })
@@ -71,7 +73,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
-  const [feverHitBalls, setFeverHitBalls] = useState([]) // 피버 연타 시 날아가는 공들
+  // 처리된 공 연출 — kind: 'hit'(방향대로 외야로) | 'miss'(헛스윙, 몸쪽으로) | 'take'(시간 초과, 가운데로 지나감)
+  const [flyBalls, setFlyBalls] = useState([])
   const [outFlash, setOutFlash] = useState(false)         // 아웃 직후 연출 (투수 비웃기·화면 흔들림 등)
   const [swingId, setSwingId] = useState(0)                // 스윙마다 증가 — 스윙 궤적 재생용 key
 
@@ -266,7 +269,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       handleGameOver()
       return
     }
-    // 맨 앞 공 제거 후 보충
+    // 맨 앞 공은 타자 옆을 지나가고, 제거 후 보충
+    if (curQueue.length > 0) setFlyBalls((balls) => [...balls, { kind: 'take', dir: null, pitch: curQueue[0] }])
     const next = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs)
     setQueue(next)
     startTimer()
@@ -298,7 +302,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       if (curQueue.length > 0) {
         const hitBall = curQueue[0]
         nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs)
-        setFeverHitBalls((balls) => [...balls, { dir, pitch: hitBall }])
+        setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: hitBall, variant: randomHitVariant() }])
         setQueue(nextQueue)
       }
       // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 즉시 반영
@@ -313,8 +317,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const bt = curQueue[0]
     const isCorrect = dir === getPitchDir(bt.id, curPitchDirs)
 
-    // 공 날아가는 애니메이션
-    setFlyDir(dir)
+    // 공 연출 — 정타는 친 방향으로 날아가고, 헛스윙은 몸쪽으로 지나감. 큐에서는 바로 빼서 뒤 공이 앞으로 옴
+    setFlyBalls((balls) => [...balls, { kind: isCorrect ? 'hit' : 'miss', dir, pitch: bt, variant: randomHitVariant() }])
+    setQueue(curQueue.slice(1))
 
     // 투수 동작
     setPitcherThrowing(true)
@@ -390,9 +395,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       }
     }
 
-    // 200ms 후 공 제거 및 다음 공 준비
+    // 200ms 후 대기열 보충 및 다음 공 준비
     setTimeout(() => {
-      setFlyDir(null)
       const next = buildQueue(curQueue.slice(1), nextUnlockStep, nextPitchDirs)
       setQueue(next)
       judgeLocked.current = false
@@ -673,20 +677,24 @@ export default function GameScreen({ onGameOver, onQuit }) {
         {queue.map((bt, i) => (
           <div
             key={bt.uid}
-            className={`ball-item-wrap depth-${i}${i === 0 && flyDir ? ` fly-${flyDir}` : ''}`}
+            className={`ball-item-wrap depth-${i}`}
             style={ballLaneLayout(i)}
           >
             {renderBall(bt, 'ball-item', 'lane')}
           </div>
         ))}
-        {feverHitBalls.map((hit) => (
+      </div>
+
+      {/* 처리된 공 연출 — 몸쪽으로 오는 공이 타자·버튼 위로 보이도록 레인 밖 별도 레이어 */}
+      <div className="fly-layer">
+        {flyBalls.map((fb) => (
           <div
-            key={hit.pitch.uid}
-            className={`ball-item-wrap fever-hit fever-fly-${hit.dir}`}
+            key={fb.pitch.uid}
+            className={`ball-item-wrap fly-ball fly-${fb.kind}${fb.dir ? `-${fb.dir}` : ''} v${fb.variant ?? 0}`}
             style={ballLaneLayout(0)}
-            onAnimationEnd={() => setFeverHitBalls((balls) => balls.filter((b) => b !== hit))}
+            onAnimationEnd={() => setFlyBalls((balls) => balls.filter((b) => b !== fb))}
           >
-            {renderBall(hit.pitch, 'ball-item', 'lane')}
+            {renderBall(fb.pitch, 'ball-item', 'lane')}
           </div>
         ))}
       </div>
