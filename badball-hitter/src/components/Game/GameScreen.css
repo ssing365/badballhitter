@@ -105,7 +105,7 @@
   /* ── 중앙 콤보 (피버 중엔 연타 수) — 10콤보마다 색/크기/글로우 강화 ── */
   .center-combo {
     position: absolute;
-    top: 42%; left: 0; right: 0;
+    top: 29%; left: 0; right: 0;
     z-index: 32;
     display: flex;
     flex-direction: column;
@@ -114,11 +114,22 @@
     pointer-events: none;
   }
 
+  /* 뒤에 은은한 어두운 그림자 — 배경 위에서도 숫자가 또렷하게 */
+  .center-combo::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 150px; height: 84px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.3) 55%, transparent);
+    z-index: -1;
+  }
+
   .center-label {
     font-family: var(--pixel-font);
-    font-size: 9px;
+    font-size: 8px;
     letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.9);
     text-shadow: var(--pixel-outline);
   }
 
@@ -126,8 +137,8 @@
     font-family: var(--pixel-font);
     line-height: 1;
     color: #fff;
-    font-size: 22px;
-    text-shadow: var(--pixel-outline);
+    font-size: 24px;  /* Press Start 2P는 8px 배수에서만 선명 — 24 / 32 / 40 */
+    text-shadow: var(--pixel-outline), 0 3px 0 rgba(0, 0, 0, 0.6);
     transition: color 0.2s, font-size 0.2s;
   }
 
@@ -147,25 +158,25 @@
     text-shadow: var(--pixel-outline), 0 0 6px rgba(250, 204, 21, 0.6);
   }
   .center-num.combo-lv-2 {
-    color: #fb923c; font-size: 26px;
+    color: #fb923c; font-size: 32px;
     text-shadow: var(--pixel-outline), 0 0 8px rgba(251, 146, 60, 0.8);
   }
   .center-num.combo-lv-3 {
-    color: #ef4444; font-size: 28px;
+    color: #ef4444; font-size: 32px;
     text-shadow: var(--pixel-outline), 0 0 12px rgba(239, 68, 68, 0.9);
   }
   .center-num.combo-lv-4 {
-    color: #e879f9; font-size: 30px;
+    color: #e879f9; font-size: 32px;
     text-shadow: var(--pixel-outline), 0 0 14px rgba(232, 121, 249, 1), 0 0 24px rgba(232, 121, 249, 0.6);
   }
   .center-num.combo-lv-5 {
-    font-size: 32px;
+    font-size: 40px;
     animation: combo-fire 0.6s steps(3) infinite;
   }
 
   /* 피버 연타 수 — 금색 큰 숫자 */
   .fever-taps { top: 45%; z-index: 37; }
-  .fever-taps .center-label { color: #fde047; font-size: 10px; }
+  .fever-taps .center-label { color: #fde047; font-size: 8px; }
   .fever-taps .center-num {
     font-size: 40px;
     color: #fde047;
@@ -262,15 +273,15 @@
   /* ── 투수 ── */
   .pitcher-area {
     position: absolute;
-    top: 35%; left: 50%;
+    top: 37.5%; left: 50%;
     transform: translateX(-50%);
     z-index: 20;
     text-align: center;
   }
   
   .pitcher-sprite {
-    width: 88px;
-    height: 88px;
+    width: 76px;
+    height: 76px;
     object-fit: contain;
     object-position: bottom center;
     image-rendering: pixelated;
@@ -400,6 +411,26 @@
   .fly-hit-left.v1  { --hit-x: -70px;  --hit-y: -300px; }
   .fly-hit-right.v0 { --hit-x: 130px;  --hit-y: -240px; }
   .fly-hit-right.v1 { --hit-x: 70px;   --hit-y: -300px; }
+
+  /* 타격 등급별 거리 — 위(v0/v1)는 2루타 기준 */
+  /* 홈런 — 더 깊게 + 금빛 글로우 (fly-hit이 wrap의 filter를 쓰므로 글로우는 공에) */
+  .fly-hit-left.v0.homerun  { --hit-x: -150px; --hit-y: -290px; }
+  .fly-hit-left.v1.homerun  { --hit-x: -80px;  --hit-y: -350px; }
+  .fly-hit-right.v0.homerun { --hit-x: 150px;  --hit-y: -290px; }
+  .fly-hit-right.v1.homerun { --hit-x: 80px;   --hit-y: -350px; }
+  /* 안타 — 짧게 */
+  .fly-hit-left.v0.single  { --hit-x: -115px; --hit-y: -180px; }
+  .fly-hit-left.v1.single  { --hit-x: -60px;  --hit-y: -210px; }
+  .fly-hit-right.v0.single { --hit-x: 115px;  --hit-y: -180px; }
+  .fly-hit-right.v1.single { --hit-x: 60px;   --hit-y: -210px; }
+  /* 파울 — 라인 밖 옆으로 크게 빠짐 */
+  .fly-hit-left.v0.foul  { --hit-x: -230px; --hit-y: -200px; }
+  .fly-hit-left.v1.foul  { --hit-x: -220px; --hit-y: -130px; }
+  .fly-hit-right.v0.foul { --hit-x: 230px;  --hit-y: -200px; }
+  .fly-hit-right.v1.foul { --hit-x: 220px;  --hit-y: -130px; }
+  .fly-ball.homerun .ball-item {
+    filter: drop-shadow(0 0 5px #fde047) drop-shadow(0 0 12px #f97316);
+  }
 
   /* 헛스윙 — 배트 반대쪽으로 살짝 비켜 타자 몸쪽으로 커지며 지나감 / 시간 초과 — 가운데로 지나감 */
   .fly-miss-left { animation: fly-miss-left 0.3s ease-in forwards; }
@@ -560,13 +591,22 @@
     --timer-num: #bbf7d0;
     position: absolute;
     bottom: 25%;
-    left: 20%; right: 20%;
+    left: 10%; right: 10%;
     z-index: 25;
-    display: flex;
-    flex-direction: column;
+    /* [바 | 초] 한 줄 + 아래 타격 결과(피버 땐 연타 안내) — 전체 높이는 공 레인 여백 48px 안 */
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    gap: 6px;
+    column-gap: 8px;
+    row-gap: 4px;
     pointer-events: none;
+  }
+
+  /* 홈런 구간(처음 0.3초) — 금빛 */
+  .timer-wrap.hr {
+    --timer-fill: linear-gradient(0deg, #b45309 0 35%, #fde047 35% 100%);
+    --timer-glow: rgba(253, 224, 71, 0.8);
+    --timer-num: #fef9c3;
   }
 
   .timer-wrap.warn {
@@ -588,7 +628,6 @@
     --timer-fill: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #fde047 100%);
     --timer-glow: #f97316;
     --timer-num: #fde047;
-    left: 12%; right: 12%;
     z-index: 37;
   }
 
@@ -633,17 +672,81 @@
     text-shadow: var(--pixel-outline);
   }
 
-  .timer-wrap.fever .timer-num { font-size: 18px; }
+  .timer-wrap.fever .timer-num { font-size: 16px; }
 
-  /* 피버 — [바 | 초] 한 줄 + 아래 연타 안내 (전체 높이는 공 레인 여백 48px 안) */
-  .timer-wrap.fever {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    column-gap: 8px;
-    row-gap: 4px;
+  .timer-wrap .fever-sub,
+  .timer-wrap .hit-label { grid-column: 1 / -1; justify-self: center; }
+
+  /* 바 + 등급 경계 표시 + 홈런 플래시의 기준 영역 */
+  .timer-bar-area { position: relative; }
+
+  /* 타격 등급 경계 — 바 위에 아래를 가리키는 작은 픽셀 화살표 (등급 색) */
+  .timer-zones i {
+    position: absolute;
+    bottom: calc(100% + 1px);
+    width: 8px;
+    height: 5px;
+    margin-left: -4px;
+    background: var(--zone-color);
+    clip-path: polygon(0 0, 100% 0, 100% 40%, 75% 40%, 75% 70%, 60% 70%, 60% 100%, 40% 100%, 40% 70%, 25% 70%, 25% 40%, 0 40%);
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.7));
   }
-  .timer-wrap.fever .fever-sub { grid-column: 1 / -1; justify-self: center; }
+  .timer-zones i.hr { --zone-color: #fde047; }
+  .timer-zones i.double { --zone-color: #4ade80; }
+  .timer-zones i.foul { --zone-color: #ef4444; }
+
+  /* 홈런 — 바 테두리가 금빛으로 번쩍 */
+  .timer-hr-flash {
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px #fde047, 0 0 20px rgba(249, 115, 22, 0.8), inset 0 0 8px rgba(253, 224, 71, 0.9);
+    animation: timer-hr-flash 0.5s steps(5, end) forwards;
+  }
+
+  @keyframes timer-hr-flash {
+    0%   { opacity: 1; border-color: #fff; }
+    40%  { opacity: 1; border-color: #fde047; }
+    100% { opacity: 0; border-color: #fde047; }
+  }
+
+  /* 타격 결과 — 작게, 등급별 색 (홈런은 FEVER처럼 금빛 반짝임) */
+  /* Press Start 2P는 8px 배수에서만 선명 */
+  .hit-label {
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    line-height: 1;
+    padding: 3px 0 2px;
+    color: #fff;
+    text-shadow: var(--pixel-outline);
+    white-space: nowrap;
+    transition: opacity 0.2s;
+    animation: hit-label-pop 0.2s ease-out;
+  }
+  .hit-label.double { color: #67e8f9; }
+  .hit-label.single { color: #f0fdf4; }
+  .hit-label.foul { color: #fdba74; }
+  .hit-label.homerun {
+    color: transparent;
+    text-shadow: none;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: linear-gradient(100deg,
+      #f59e0b 0 30%, #fde047 40%, #fff 47%, #fff 53%, #fde047 60%, #f59e0b 70% 100%);
+    background-size: 300% 100%;
+    filter:
+      drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000)
+      drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000)
+      drop-shadow(0 0 6px rgba(253, 224, 71, 0.9));
+    animation: hit-label-pop 0.2s ease-out, fever-shine 0.9s steps(9, end) infinite;
+  }
+
+  @keyframes hit-label-pop {
+    0%   { transform: scale(0.5); }
+    60%  { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
 
   @keyframes gauge-glow-danger {
     0%  { box-shadow: 0 0 0 1px #fecaca, 0 0 10px #ef4444; }
@@ -933,7 +1036,7 @@
   /* ── 결과 팝업 텍스트 ── */
   .result-pop {
     position: absolute;
-    top: 32%; left: 50%;
+    top: 42%; left: 50%;
     transform: translateX(-50%);
     font-family: var(--pixel-font);
     font-size: 18px;
@@ -1072,7 +1175,10 @@
     .fever-title-text::before,
     .fever-title-text::after { animation: none !important; }
     .result-pop.new,
-    .result-pop.bad { animation: pop-in 0.25s ease-out !important; }    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
+    .result-pop.bad { animation: pop-in 0.25s ease-out !important; }
+    .hit-label.homerun { animation: hit-label-pop 0.2s ease-out !important; }
+    .timer-hr-flash { animation: none !important; opacity: 0; }
+    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
   }
   
   .fever-ui {

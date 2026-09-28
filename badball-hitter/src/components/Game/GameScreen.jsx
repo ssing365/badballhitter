@@ -4,7 +4,7 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage,
-  FEVER_TAP_POINTS, calcBatSpeed,
+  FEVER_TAP_POINTS, calcBatSpeed, getHitGrade,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
 } from '../constants'
 import {
@@ -32,6 +32,10 @@ const ballLaneLayout = (index) => ({
 let ballUid = 0
 const nextBallUid = () => ++ballUid
 
+// 타이머 바 색 = 지금 치면 받을 타격 등급 (판정과 같은 기준)
+const GRADE_TIMER_LEVEL = { homerun: 'hr', double: 'safe', single: 'warn', foul: 'danger' }
+const timerLevelAt = (elapsedMs) => GRADE_TIMER_LEVEL[getHitGrade(elapsedMs).id]
+
 // 정타 궤적 2종 중 랜덤 (CSS .v0 / .v1)
 const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
 
@@ -55,6 +59,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [classified, setClassified] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [feverTaps, setFeverTaps] = useState(0)          // 게임 전체 피버 연타 누적 (결과 화면용)
+  const [homeRuns, setHomeRuns] = useState(0)            // 홈런 수 (결과 화면용)
   const [feverRoundTaps, setFeverRoundTaps] = useState(0) // 이번 피버 연타 수 (끝날 때 점수 합산)
   const [unlockStep, setUnlockStep] = useState(0)
   const [pitchDirs, setPitchDirs] = useState(() => assignDirsForStep(0))
@@ -73,7 +78,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [paused, setPaused] = useState(false)
   const [soundMuted, setSoundMuted] = useState(isMuted)
   const [hapticOn, setHapticOnState] = useState(isHapticOn)
-  const [timerLevel, setTimerLevel] = useState('safe') // 'safe' | 'warn' | 'danger'
+  const [timerLevel, setTimerLevel] = useState('hr') // 'hr' | 'safe' | 'warn' | 'danger' — 타격 등급 구간
+  // 타이머 바 아래 타격 결과 (HOME RUN!/DOUBLE!/SINGLE!/FOUL)
+  const [hitLabel, setHitLabel] = useState({ id: 0, grade: '', text: '', visible: false })
+  const [hrFlash, setHrFlash] = useState(0)                // 홈런마다 증가 — 타이머 바 플래시·관중 환호 key
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
   const [feverCountdown, setFeverCountdown] = useState(FEVER_DURATION)
@@ -84,7 +92,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // ── ref로 최신 상태 참조 (클로저 문제 방지) ──
   const stateRef = useRef({})
-  stateRef.current = { score, combo, maxCombo, outs, classified, correct, feverTaps, feverRoundTaps, unlockStep, pitchDirs, queue, fever }
+  stateRef.current = { score, combo, maxCombo, outs, classified, correct, feverTaps, homeRuns, feverRoundTaps, unlockStep, pitchDirs, queue, fever }
 
   const timerRaf = useRef(null)
   const timerBarRef = useRef(null)  // 바 너비는 매 프레임 DOM 직접 갱신 (리렌더 없이)
@@ -96,6 +104,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const feverActiveRef = useRef(false)
   const popTimeout = useRef(null)
   const scorePopTimeouts = useRef({})
+  const hitLabelTimeout = useRef(null)
+  const hrFlashTimeout = useRef(null)
   const reactionRef = useRef({ sum: 0, count: 0 })  // 정답 스윙 반응시간 누적 (Bat Speed용)
 
   // ── 피버 차지 (0~FEVER_CHARGE_MAX, 소수 — 입력 없으면 서서히 감소) ──
@@ -141,6 +151,20 @@ export default function GameScreen({ onGameOver, onQuit }) {
     )
   }, [])
 
+  // ── 타이머 바 아래 타격 결과 ──
+  const showHitLabel = useCallback((grade) => {
+    clearTimeout(hitLabelTimeout.current)
+    setHitLabel((p) => ({ id: p.id + 1, grade: grade.id, text: grade.label, visible: true }))
+    hitLabelTimeout.current = setTimeout(() => setHitLabel((p) => ({ ...p, visible: false })), 700)
+  }, [])
+
+  // ── 홈런 — 타이머 바 플래시 + 관중 환호 ──
+  const triggerHrFlash = useCallback(() => {
+    clearTimeout(hrFlashTimeout.current)
+    setHrFlash((n) => n + 1)
+    hrFlashTimeout.current = setTimeout(() => setHrFlash(0), 900)
+  }, [])
+
   // ── 타이머 시작 (elapsedMs: 일시정지 후 이어서 재개할 때의 경과 시간) ──
   const startTimer = useCallback((elapsedMs = 0) => {
     if (feverActiveRef.current) return
@@ -154,7 +178,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     timerStart.current = performance.now() - elapsedMs
     if (elapsedMs === 0) {
       if (timerBarRef.current) timerBarRef.current.style.transform = 'scaleX(1)'
-      setTimerLevel('safe')
+      setTimerLevel('hr')
       setTimerNum(TIMER_MAX.toFixed(1))
     }
 
@@ -169,7 +193,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         timerBarRef.current.style.transform = `scaleX(${remaining / TIMER_MAX})`
       }
       setTimerNum(remaining.toFixed(1))
-      setTimerLevel(remaining > 2 ? 'safe' : remaining > 1 ? 'warn' : 'danger')
+      setTimerLevel(timerLevelAt(elapsed * 1000))
 
       if (remaining <= 0) {
         handleTimeoutRef.current()
@@ -253,6 +277,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         classified: s.classified,
         maxCombo: s.maxCombo,
         feverTaps: s.feverTaps,
+        homeRuns: s.homeRuns,
         unlockStep: s.unlockStep,
         batSpeed: count > 0 ? calcBatSpeed(sum / count) : null,
         pitchBallImages,
@@ -323,9 +348,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     const bt = curQueue[0]
     const isCorrect = dir === getPitchDir(bt.id, curPitchDirs)
+    const reactionMs = performance.now() - timerStart.current
+    const hitGrade = isCorrect ? getHitGrade(reactionMs) : null
+    const isHomeRun = hitGrade?.id === 'homerun'
 
     // 공 연출 — 정타는 친 방향으로 날아가고, 헛스윙은 몸쪽으로 지나감. 큐에서는 바로 빼서 뒤 공이 앞으로 옴
-    setFlyBalls((balls) => [...balls, { kind: isCorrect ? 'hit' : 'miss', dir, pitch: bt, variant: randomHitVariant() }])
+    setFlyBalls((balls) => [...balls, { kind: isCorrect ? 'hit' : 'miss', dir, pitch: bt, variant: randomHitVariant(), grade: hitGrade?.id }])
     setQueue(curQueue.slice(1))
 
     // 투수 동작
@@ -342,12 +370,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     if (isCorrect) {
       playHitSfx()
-      haptic('tickWeak')
-      reactionRef.current.sum += performance.now() - timerStart.current
+      haptic(isHomeRun ? 'tap' : 'tickWeak')
+      reactionRef.current.sum += reactionMs
       reactionRef.current.count += 1
       const newCombo = curCombo + 1
       const newMax = Math.max(newCombo, curMax)
-      const pts = calcScore(newCombo)
+      const pts = Math.round(calcScore(newCombo) * hitGrade.mult)
       const newScore = curScore + pts
       const newCorrect = curCrt + 1
 
@@ -357,6 +385,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
       setCorrect(newCorrect)
       setClassified(newClassified)
       showScorePop(`+${pts}`)
+      showHitLabel(hitGrade)
+      if (isHomeRun) {
+        const newHomeRuns = stateRef.current.homeRuns + 1
+        setHomeRuns(newHomeRuns)
+        stateRef.current = { ...stateRef.current, homeRuns: newHomeRuns }
+        triggerHrFlash()
+      }
 
       // 구종 해금 (첫 공은 콤보, 이후는 점수 기준)
       const reachedStep = getUnlockStep(curUnlockStep, newCombo, newScore)
@@ -411,7 +446,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       judgeLocked.current = false
       if (!feverActiveRef.current) startTimer()
     }, 200)
-  }, [showPop, showScorePop, startFever, handleGameOver, startTimer, triggerSwing])
+  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, handleGameOver, startTimer, triggerSwing])
 
   // ── 일시정지 / 재개 ──
   const pauseGame = useCallback(() => {
@@ -529,6 +564,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       clearTimeout(swingTimeout.current)
       clearTimeout(popTimeout.current)
       Object.values(scorePopTimeouts.current).forEach(clearTimeout)
+      clearTimeout(hitLabelTimeout.current)
+      clearTimeout(hrFlashTimeout.current)
       endedRef.current = true
       stopSfx('fever')
       stopSfx('feverCrowd')
@@ -591,8 +628,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // 화면 연출 단계 — 아웃 직후 > 피버 > 30콤보+ > 평소 (.game-screen의 scene-* 클래스로 CSS에서 처리)
   const sceneMood = outFlash ? 'out' : fever ? 'fever' : combo >= 30 ? 'hype' : 'normal'
-  // 관중 분위기 — 피버 > 30콤보+ > 10콤보+ > 평소
-  const crowdMood = fever ? 'fever' : combo >= 30 ? 'hype' : combo >= 10 ? 'warm' : 'calm'
+  // 관중 분위기 — 피버·홈런 직후 > 30콤보+ > 10콤보+ > 평소
+  const crowdMood = fever || hrFlash ? 'fever' : combo >= 30 ? 'hype' : combo >= 10 ? 'warm' : 'calm'
 
   // 10콤보마다 콤보 숫자 스타일 단계 상승 (최대 5)
   const comboLevel = Math.min(Math.floor(combo / 10), 5)
@@ -706,7 +743,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         {flyBalls.map((fb) => (
           <div
             key={fb.pitch.uid}
-            className={`ball-item-wrap fly-ball fly-${fb.kind}${fb.dir ? `-${fb.dir}` : ''} v${fb.variant ?? 0}`}
+            className={`ball-item-wrap fly-ball fly-${fb.kind}${fb.dir ? `-${fb.dir}` : ''} v${fb.variant ?? 0}${fb.grade ? ` ${fb.grade}` : ''}`}
             style={ballLaneLayout(0)}
             onAnimationEnd={() => setFlyBalls((balls) => balls.filter((b) => b !== fb))}
           >
@@ -721,12 +758,34 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
       {/* 타이머 — 피버 중엔 남은 피버 시간 (바는 타이머 tick / 게이지 루프가 DOM 직접 갱신) */}
       <div className={`timer-wrap ${fever ? 'fever' : timerLevel}`}>
-        <div className="timer-track">
-          <div className="timer-bar" ref={timerBarRef} />
+        <div className="timer-bar-area">
+          <div className="timer-track">
+            <div className="timer-bar" ref={timerBarRef} />
+          </div>
+          {/* 타격 등급 경계 표시 — 바 위 작은 픽셀 화살표, 남은 시간 2.7s(홈런) / 2.1s(2루타) / 0.7s(파울 시작) */}
+          {!fever && (
+            <div className="timer-zones" aria-hidden="true">
+              <i className="hr" style={{ left: '90%' }} />
+              <i className="double" style={{ left: '70%' }} />
+              <i className="foul" style={{ left: '23.33%' }} />
+            </div>
+          )}
+          {/* 홈런 — 바만 금빛으로 번쩍 */}
+          {hrFlash > 0 && <div key={`hr-${hrFlash}`} className="timer-hr-flash" />}
         </div>
         <span className="timer-num">{fever ? `${feverCountdown}s` : timerNum}</span>
-        {/* 피버 중엔 초는 바 오른쪽, 연타 안내는 바 아래 */}
-        {fever && <div className="fever-sub">마구 눌러요!</div>}
+        {/* 초는 바 오른쪽, 바 아래는 피버 중엔 연타 안내 / 평소엔 타격 결과 (자리는 항상 확보) */}
+        {fever ? (
+          <div className="fever-sub">마구 눌러요!</div>
+        ) : (
+          <div
+            key={`hit-${hitLabel.id}`}
+            className={`hit-label ${hitLabel.grade}`}
+            style={{ opacity: hitLabel.visible ? 1 : 0 }}
+          >
+            {hitLabel.text || '\u00a0'}
+          </div>
+        )}
       </div>
 
       {/* 좌/우 버튼 + 타자 */}

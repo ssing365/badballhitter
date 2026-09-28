@@ -110,6 +110,16 @@ export const TIMER_MAX = 3
 // 콤보 점수 공식: 100 + floor(100 * log2(combo+1))
 export const calcScore = (combo) => 100 + Math.floor(100 * Math.log2(combo + 1))
 
+// 타격 등급 — 공 준비 후 정타까지 걸린 시간(ms)으로 판정, 점수 = calcScore × mult
+// 타이머 3초 기준: 0.3초 이내 홈런 / 2.1초 이상 남기면 2루타 / 0.7초 초과 남기면 안타 / 마지막 0.7초는 파울(콤보 유지)
+export const HIT_GRADES = [
+  { id: 'homerun', label: 'HOME RUN!', maxMs: 300,      mult: 2 },
+  { id: 'double',  label: 'DOUBLE!',   maxMs: 900,      mult: 1.2 },
+  { id: 'single',  label: 'SINGLE!',   maxMs: 2300,     mult: 1 },
+  { id: 'foul',    label: 'FOUL',      maxMs: Infinity, mult: 0.7 },
+]
+export const getHitGrade = (reactionMs) => HIT_GRADES.find((g) => reactionMs <= g.maxMs)
+
 // 피버 차지 — 정타 1회당 1씩 참, MAX 도달 시 피버 (아웃·피버 종료 시 0)
 export const FEVER_CHARGE_MAX = 15
 // 마지막 정타 후 이 시간이 지나면 차지가 서서히 줄어듦 (초당 DECAY_PER_SEC hit)
@@ -148,10 +158,13 @@ export const formatAvg = (correct, classified) =>
   classified > 0 ? (correct / classified).toFixed(3).replace(/^0/, '') : '.000'
 
 // 결과 스탯표 행 + 최종 점수 (행 점수 합 = 최종 점수)
-export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, feverTaps, batSpeed }) => {
+export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, feverTaps, batSpeed, homeRuns = 0 }) => {
   const feverPts = feverTaps * FEVER_TAP_POINTS
   const rows = [
-    { id: 'hits',  label: 'Hits',       value: String(correct), sub: `AVG ${formatAvg(correct, classified)}`, pts: score - feverPts },
+    {
+      id: 'hits', label: 'Hits', value: String(correct),
+      sub: `AVG ${formatAvg(correct, classified)} · HR ${homeRuns}`, pts: score - feverPts,
+    },
     { id: 'fever', label: 'Fever Taps', value: String(feverTaps), pts: feverPts },
     { id: 'combo', label: 'Max Combo',  value: String(maxCombo), pts: maxCombo * COMBO_BONUS_PER },
     {
