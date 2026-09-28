@@ -42,7 +42,9 @@ badball-hitter/
 │   ├── lib/
 │   │   ├── sound.js          # Howler.js BGM 관리
 │   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시)
-│   │   └── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
+│   │   ├── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
+│   │   └── haptic.js         # 햅틱(Device.triggerHaptic) + 진동 on/off(localStorage `hapticOff`), 토스 웹뷰 밖이면 no-op
+│   ├── assets/icons/         # 마스크용 svg (volume / volume-xmark / vibrate / vibrate-off)
 │   └── components/
 │       ├── constants.js      # 구종 정의, 해금 단계, 게임 상수 (components/ 안에 위치)
 │       ├── Title/TitleScreen.jsx / .css
@@ -50,6 +52,7 @@ badball-hitter/
 │       ├── Game/GameResult.jsx / .css
 │       ├── Game/Crowd.jsx / .css      # 관중석 들썩임 레이어
 │       ├── Game/Fielders.jsx / .css   # 내야 수비수 2명 (유격수·2루수)
+│       ├── Sound/BgmToggle.jsx / .css # 타이틀·결과 우상단 사운드 토글 + 진동 토글(토스 웹뷰에서만)
 │       └── Team/TeamSelect.jsx / .css   # ⚠️ 미사용 + 깨짐 (constants에 없는 TEAMS import, 한글 UI)
 ```
 
@@ -87,15 +90,28 @@ badball-hitter/
 - 이미지가 없으면 color + text 원형으로 렌더 (폴백)
 
 ### 점수 공식
-`calcScore(combo) = 100 + floor(100 * log2(combo + 1))` — 콤보 복리 증가
+`calcScore(combo) = 100 + floor(100 * log2(combo + 1))` — 콤보 복리 증가. 정타 점수 = `round(calcScore × 타격 등급 mult)`
+
+### 타격 등급 (HIT_GRADES, `getHitGrade(reactionMs)`)
+공 준비~정타 시간 기준. 파울도 정답 처리(콤보·피버 차지 유지), 라벨은 영어
+| 등급 | 조건 (타이머 3초) | 배율 | 타구 |
+|----|------|----|----|
+| HOME RUN! | 0.3초 이내 | 2 | 가장 깊게 + 금빛 글로우, 타이머 바 플래시 + 관중 fever 들썩임(`hrFlash`) |
+| DOUBLE! | 2.1초 이상 남김 | 1.2 | 기본 궤적 |
+| SINGLE! | 0.7초 초과 남김 | 1 | 짧게 |
+| FOUL | 마지막 0.7초 | 0.7 | 옆으로 크게 빠짐 |
+- 타이머 바 색 = 지금 치면 받을 등급(`timerLevelAt`): hr 금 / safe 초록 / warn 노랑 / danger 빨강 깜빡임. 바 위 픽셀 화살표로 경계(2.7s 금·2.1s 초록·0.7s 빨강) 표시
+- 판정 결과는 타이머 바 아래(`.hit-label`)에 작게 0.7초. 홈런 수는 결과 화면 Hits 행 sub(`AVG · HR n`)
 
 ### 게임 규칙
 - **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색으로 남은 피버 시간을 표시하고 초 숫자도 크게 보여줌(타자 옆 게이지는 숨김)
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
 - **피버 차지 바**(타자 오른쪽 세로 게이지): 정타 1회당 +1, `FEVER_CHARGE_MAX = 15`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과)이나 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 남은 피버 시간을 그림)
-- **피버**: `FEVER_DURATION = 4`초간 좌우 무관 연타, 타이머 정지·아웃 없음. 중앙에 이번 피버 연타 수(`feverRoundTaps`)를 표시하고, 종료 시 `연타 × FEVER_TAP_POINTS(100)`를 한 번에 점수에 더함(전광판 옆 금색 `+N` 팝업)
-- **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Quit(타이틀)
-- **공 대기열**: `QUEUE_SIZE = 8`개, 앞(index 0)이 크고 뒤로 갈수록 작게 겹쳐 표시
+- **피버**: `FEVER_DURATION = 4`초간 좌우 무관 연타, 타이머 정지·아웃 없음. 타이머 바 아래 "마구 눌러요!", 방향 버튼 위 `TAP!` 말풍선 + 버튼이 번갈아 눌리는 펄스로 연타 유도. 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이). 중앙에 이번 피버 연타 수(`feverRoundTaps`)를 표시하고, 종료 시 `연타 × FEVER_TAP_POINTS(100)`를 한 번에 점수에 더함(전광판 옆 금색 `+N` 팝업)
+- **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Vibration on·off(토스 웹뷰에서만) / Quit(타이틀)
+- **공 대기열**: `QUEUE_SIZE = 8`개, 레인 바닥 기준(`ballLaneLayout`, bottom %) — 맨 앞(쳐야 할 공)은 1.3배 + 흰 글로우, 뒤로 갈수록 작게 겹쳐 표시. 앞 공이 커져도 위로 자라서 타이머와 안 겹침
+- **처리된 공 연출**(`flyBalls`, 레인 밖 `.fly-layer` z 33): 판정 즉시 큐에서 빼고 keyframes 재생 후 `onAnimationEnd`로 제거. `hit`(친 방향 관중석으로 직선 → 끝에서 살짝 떨어지며 흐려짐, 좌/우 궤적 2종 `v0`/`v1` 랜덤, 등급별 거리) / `miss`(헛스윙 — 배트 반대쪽으로 비켜 몸쪽으로 커지며 지나감) / `take`(시간 초과 — 가운데로 지나감). 피버 연타도 `hit`
+- **햅틱**: 정타 `tickWeak`, 홈런 `tap`, 아웃 `error`, 피버 시작 `success`, 피버 연타 `tickWeak`(최소 50ms 간격). 토스 앱 설정 > 진동이 켜져 있어야 동작
 - **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
 
 ### Bat Speed / 최종 점수 (결과 화면)
@@ -145,14 +161,15 @@ stopBgm()
 - `.game-screen`은 `container-type: size` — 자식에서 `cqh` 단위 사용 (배경이 높이 기준 cover라 배경 위치 맞출 때 유용)
 - 점수: 배경 전광판 화면 위 `.scoreboard` (top 15.3cqh, 23.8×7cqh, 앰버 LED 픽셀 폰트)
 - 우상단 HUD: 일시정지 버튼 (`.pause-btn`)
-- 중앙 콤보(`.center-combo`, top 42%): 10콤보마다 `combo-lv-0~5`로 색/크기/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에는 연타 수
-- 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 32%)
+- 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에는 연타 수(top 45%)
+- 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 42%, `showPop(text, tone)`) — `new` 보라~핑크 그라데이션 + 빛줄기, `bad` 22px 빨강→검붉은 그라데이션 + 검은 그림자, 등장 후 축 처짐
 - 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
-- 공 레인: width 54px, 중앙 세로
-- 공 아이템: 48×48px
+- 공 레인: width 54px, 중앙 세로, top 13% ~ bottom `calc(25% + 48px)` (타이머 위에서 끝남)
+- 타이머(`.timer-wrap`, bottom 25%, 좌우 10%): grid `[바 | 초]` + 아래 줄(타격 결과 / 피버 땐 "마구 눌러요!"). 전체 높이가 레인 아래 여백 48px 안이어야 맨 앞 공을 안 가림
+- 공 아이템: 48×48px (맨 앞 1.3배)
 - 힌트 공: 48×48px
 - 방향 버튼: 76×58px
-- 타자/투수 스프라이트: 88×88px
+- 타자 스프라이트: 88×88px / 투수: 76×76px (top 37.5%)
 
 ## 리더보드 / 닉네임 전략 (미구현)
 - **로그인 없음** — 절대 소셜 로그인 붙이지 않음
@@ -174,7 +191,7 @@ scores (id uuid, nickname text, team_id text, score int,
 ```
 - RLS: scores INSERT 누구나, SELECT 전체 공개
 - `src/lib/supabase.js` 파일 생성해서 연동
-- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, unlockStep, batSpeed, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
+- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, homeRuns, unlockStep, batSpeed, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
 - 컴포넌트: PascalCase (`GameScreen.jsx`), 화면별 폴더 (`Game/`, `Title/`)
@@ -185,6 +202,8 @@ scores (id uuid, nickname text, team_id text, score int,
 - `var` 사용 금지 — `const` / `let` 만 사용
 - 주석은 한글, UI 텍스트는 영어 (구종명·태그라인·피버 문구·공유 문구는 한글)
 - 픽셀 폰트에 한글이 나오면 `--pixel-font`의 `Galmuri11` 폴백으로 렌더 (Press Start 2P에 한글 없음)
+- Press Start 2P는 **8px 배수(8/16/24/32/40)**에서만 선명 — 12·14·22px 등은 깨져 보임
+- 그라데이션 글씨(`background-clip: text` + 투명 채움)는 text-shadow가 비쳐 보이므로 외곽선·글로우를 `filter: drop-shadow`로
 - 토스 SDK 호출은 `lib/`에 감싸서 try/catch — 토스 밖(웹 배포)에서는 SDK가 throw하므로 폴백 필수
 
 ## 에셋 규칙
