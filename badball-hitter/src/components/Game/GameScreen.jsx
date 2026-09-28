@@ -61,7 +61,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [queue, setQueue] = useState([])
   const [pitcherThrowing, setPitcherThrowing] = useState(false)
   const [swingDir, setSwingDir] = useState(null)     // 'left' | 'right' | null
-  const [popMsg, setPopMsg] = useState({ id: 0, text: '', color: '', visible: false })
+  const [popMsg, setPopMsg] = useState({ id: 0, text: '', tone: '', visible: false })
   // 전광판 옆 +점수 — 정타/피버 합계를 따로 표시 (피버 직후 정타에 묻히지 않게)
   const [scorePops, setScorePops] = useState({
     hit: { id: 0, text: '', visible: false },
@@ -121,9 +121,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // ── 팝업 표시 ──
   // id 증가로 매번 등장 애니메이션 재생, 이전 팝업의 숨김 타이머는 취소
-  const showPop = useCallback((text, color) => {
+  const showPop = useCallback((text, tone) => {
     clearTimeout(popTimeout.current)
-    setPopMsg((p) => ({ id: p.id + 1, text, color, visible: true }))
+    setPopMsg((p) => ({ id: p.id + 1, text, tone, visible: true }))
     popTimeout.current = setTimeout(() => setPopMsg((p) => ({ ...p, visible: false })), 850)
   }, [])
 
@@ -261,7 +261,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const { outs: curOuts, queue: curQueue, unlockStep: curUnlockStep, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
     chargeRef.current = 0
-    showPop('TIME UP!', '#ef4444')
+    showPop('TIME UP!', 'bad')
     playSfx('crowdDisappointment')  // 스윙 없이 아웃 — 관중 탄식만
     const newOuts = curOuts + 1
     setOuts(newOuts)
@@ -376,7 +376,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           .map((id) => PITCHES[id].label)
         // 새 구종 팝업과 함께 해금 효과음
         setTimeout(() => {
-          showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, '#facc15')
+          showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, 'new')
           playSfx('newBall')
         }, 450)
       }
@@ -386,7 +386,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       setCombo(0)
       chargeRef.current = 0
       setClassified(newClassified)
-      showPop('MISS!', '#ef4444')
+      showPop('MISS!', 'bad')
       setOuts(newOuts)
       if (newOuts >= 3) {
         setTimeout(() => handleGameOver(), 300)
@@ -709,6 +709,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
           <div className="timer-bar" ref={timerBarRef} />
         </div>
         <span className="timer-num">{fever ? `${feverCountdown}s` : timerNum}</span>
+        {/* 피버 중엔 초는 바 오른쪽, 연타 안내는 바 아래 */}
+        {fever && <div className="fever-sub">마구 눌러요!</div>}
       </div>
 
       {/* 좌/우 버튼 + 타자 */}
@@ -718,6 +720,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           onPointerDown={(e) => { e.preventDefault(); judge('left') }}
           aria-label="Left"
         >
+          {fever && <span className="tap-badge left">TAP!</span>}
           <span className="dir-arrow left" />
         </button>
         <div className={`batter-slot${fever ? ' fever-active' : ''}`}>
@@ -738,6 +741,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           onPointerDown={(e) => { e.preventDefault(); judge('right') }}
           aria-label="Right"
         >
+          {fever && <span className="tap-badge right">TAP!</span>}
           <span className="dir-arrow right" />
         </button>
       </div>
@@ -748,8 +752,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 결과 팝업 */}
       <div
         key={`msg-${popMsg.id}`}
-        className="result-pop"
-        style={{ color: popMsg.color, opacity: popMsg.visible ? 1 : 0 }}
+        className={`result-pop ${popMsg.tone}`}
+        style={{ opacity: popMsg.visible ? 1 : 0 }}
       >
         {popMsg.text}
       </div>
@@ -759,8 +763,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
         <>
           <div className="fever-overlay" />
           <div className="fever-ui">
-            <div className="fever-title">🔥 FEVER!</div>
-            <div className="fever-sub">마구 눌러요!</div>
+            <div className="fever-title">
+              <span className="fever-fire">🔥</span>
+              <span className="fever-title-text">FEVER!</span>
+              <span className="fever-fire">🔥</span>
+            </div>
           </div>
         </>
       )}

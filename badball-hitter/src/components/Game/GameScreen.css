@@ -635,6 +635,16 @@
 
   .timer-wrap.fever .timer-num { font-size: 18px; }
 
+  /* 피버 — [바 | 초] 한 줄 + 아래 연타 안내 (전체 높이는 공 레인 여백 48px 안) */
+  .timer-wrap.fever {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+  .timer-wrap.fever .fever-sub { grid-column: 1 / -1; justify-self: center; }
+
   @keyframes gauge-glow-danger {
     0%  { box-shadow: 0 0 0 1px #fecaca, 0 0 10px #ef4444; }
     50% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 4px rgba(239, 68, 68, 0.5); }
@@ -864,6 +874,53 @@
     --btn-shade: 0 0 transparent;
     --btn-arrow: #ffffff;
   }
+  /* 피버 — 두 버튼이 번갈아 콩콩 눌리며 연타 유도 (실제로 누르는 중엔 눌림 상태 우선) */
+  .scene-fever .dir-btn:not(.pressed):not(:active) {
+    animation: fever-btn-pulse 0.4s steps(1, end) infinite;
+  }
+  .scene-fever .btn-row > .dir-btn:last-child { animation-delay: -0.2s; }
+
+  @keyframes fever-btn-pulse {
+    0%  { transform: translateY(0); }
+    50% { transform: translateY(calc(var(--btn-depth) / 2)); }
+  }
+
+  /* 피버 — 버튼 위 TAP! 말풍선, 좌우 번갈아 깜빡임 */
+  .tap-badge {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    translate: -50% 0;
+    padding: 4px 5px 3px;
+    font-family: var(--pixel-font);
+    font-size: 11px;
+    line-height: 1;
+    color: #fde047;
+    background: rgba(0, 0, 0, 0.75);
+    border: 2px solid #fde047;
+    text-shadow: var(--pixel-outline);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: tap-badge-blink 0.4s steps(1, end) infinite;
+  }
+  .tap-badge.right { animation-delay: -0.2s; }
+
+  /* 말풍선 꼬리 (아래로) */
+  .tap-badge::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border: 5px solid transparent;
+    border-top-color: #fde047;
+  }
+
+  @keyframes tap-badge-blink {
+    0%  { color: #fde047; border-color: #fde047; scale: 1.15; }
+    50% { color: #fff; border-color: #fff; scale: 1; }
+  }
+
   .scene-out .dir-btn {
     --btn-face: #3f3f46;
     --btn-face-hi: #71717a;
@@ -894,6 +951,43 @@
     0%   { transform: translateX(-50%) scale(0.4); }
     60%  { transform: translateX(-50%) scale(1.25); }
     100% { transform: translateX(-50%) scale(1); }
+  }
+
+  /* 톤별 팝업 — 글씨가 투명 채움(그라데이션)이라 외곽선·글로우는 text-shadow 대신 drop-shadow */
+  .result-pop.new,
+  .result-pop.bad {
+    color: transparent;
+    text-shadow: none;
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  /* 새 구종 — 보라~핑크 금속빛에 흰 빛줄기가 스쳐 지나감 (FEVER 글씨와 같은 방식) */
+  .result-pop.new {
+    background-image: linear-gradient(100deg,
+      #c084fc 0 30%, #f0abfc 40%, #fff 47%, #fff 53%, #f0abfc 60%, #d946ef 70% 100%);
+    background-size: 300% 100%;
+    filter:
+      drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000)
+      drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000)
+      drop-shadow(0 0 6px rgba(240, 171, 252, 0.9)) drop-shadow(0 0 14px rgba(192, 38, 211, 0.8));
+    animation: pop-in 0.25s ease-out, fever-shine 0.9s steps(9, end) infinite;
+  }
+
+  /* MISS / TIME UP — 붉은 글씨가 아래로 검붉게 가라앉고, 검은 그림자가 드리운 채 축 처짐 */
+  .result-pop.bad {
+    font-size: 22px;
+    background-image: linear-gradient(180deg, #fca5a5 0%, #ef4444 35%, #991b1b 70%, #3f0a0a 100%);
+    filter:
+      drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000)
+      drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000)
+      drop-shadow(0 0 8px rgba(127, 29, 29, 0.9)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.85));
+    animation: pop-in 0.25s ease-out, bad-sink 0.6s ease-in 0.25s forwards;
+  }
+
+  @keyframes bad-sink {
+    from { transform: translateX(-50%) translateY(0) scale(1); }
+    to   { transform: translateX(-50%) translateY(6px) scale(0.95); }
   }
   
   /* ── 피버 ── */
@@ -970,7 +1064,15 @@
     .score-pop,
     .swing-trail { animation: none !important; }
     .swing-trail { display: none !important; }
-    .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
+    .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }
+    .scene-fever .dir-btn,
+    .tap-badge,
+    .fever-title,
+    .fever-title-text,
+    .fever-title-text::before,
+    .fever-title-text::after { animation: none !important; }
+    .result-pop.new,
+    .result-pop.bad { animation: pop-in 0.25s ease-out !important; }    .fever-overlay { box-shadow: inset 0 0 0 4px #facc15; }
   }
   
   .fever-ui {
@@ -982,18 +1084,75 @@
   }
   
   .fever-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     font-family: var(--pixel-font);
-    font-size: 22px;
-    color: #facc15;
-    text-shadow: var(--pixel-outline), 0 2px 8px rgba(0,0,0,0.5);
+    font-size: 32px;
+    line-height: 1;
+    animation: fever-title-pop 0.35s ease-out, fever-title-pulse 0.48s steps(1, end) 0.35s infinite;
   }
-  
+
+  .fever-fire { font-size: 26px; }
+
+  /* 금빛 글씨 + 흰 빛줄기가 스쳐 지나감. 글씨가 투명 채움이라 외곽선·글로우는 text-shadow 대신 drop-shadow */
+  .fever-title-text {
+    position: relative;
+    color: transparent;
+    background: linear-gradient(100deg,
+      #f59e0b 0 30%, #fde047 40%, #fff 47%, #fff 53%, #fde047 60%, #f59e0b 70% 100%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter:
+      drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000)
+      drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000)
+      drop-shadow(0 0 6px rgba(253, 224, 71, 0.9)) drop-shadow(0 0 14px rgba(249, 115, 22, 0.8));
+    animation: fever-shine 0.9s steps(9, end) infinite;
+  }
+
+  /* 반짝이 별 — 글씨 양 끝 위아래에서 번갈아 */
+  .fever-title-text::before,
+  .fever-title-text::after {
+    content: '✦';
+    position: absolute;
+    font-size: 14px;
+    color: #fff;
+    -webkit-text-fill-color: #fff;
+    text-shadow: 0 0 6px #fde047;
+    animation: fever-sparkle 0.6s steps(1, end) infinite;
+  }
+  .fever-title-text::before { top: -12px; left: -6px; }
+  .fever-title-text::after { bottom: -10px; right: -8px; animation-delay: -0.3s; }
+
+  @keyframes fever-title-pop {
+    0%   { transform: scale(0.3); }
+    60%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes fever-title-pulse {
+    0%  { transform: scale(1); }
+    50% { transform: scale(1.07); }
+  }
+
+  @keyframes fever-shine {
+    from { background-position: 100% 0; }
+    to   { background-position: 0 0; }
+  }
+
+  @keyframes fever-sparkle {
+    0%  { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.5); }
+  }
+
   .fever-sub {
     display: inline-block;
-    margin-top: 8px;
-    padding: 5px 8px 4px;
+    padding: 4px 7px 3px;
     font-family: var(--pixel-font);
-    font-size: 14px;
+    font-size: 12px;
+    line-height: 1;
     color: #fff;
     background: rgba(0, 0, 0, 0.55);
     border: 2px solid #fde047;
