@@ -61,6 +61,7 @@ badball-hitter/
 - 팀 선택/닉네임 입력 화면은 아직 흐름에 없음
 - 타이틀의 Ranking 버튼은 토스 게임센터 리더보드(`openLeaderboard`), 토스 밖(웹)에서는 `alert('Ranking coming soon!')`
 - 재시작 시 `gameKey` 증가로 `GameScreen` 리마운트
+- 타이틀 `Play Ball!`은 결과 화면 `Play again!`과 같은 스타일(주황빛 노란 블록, 안팎 글로우, 갈색 그라데이션 픽셀 글씨, 실밥 점선), Ranking은 결과 화면 메인화면 버튼과 같은 Galmuri11 텍스트 버튼
 
 ## 게임 핵심 로직 (src/components/constants.js)
 
@@ -82,6 +83,7 @@ badball-hitter/
 | 4 | 80,000점 + 20콤보 | sweeper (우) |
 
 - 콤보가 끊겨도 해금된 단계는 유지
+- 해금 점수 조건은 **타격 등급 배율을 뺀 점수**(`score - gradeBonusRef`)로 판정 — 홈런·2루타 보너스가 해금 속도와 결과 등급을 끌어올리지 않도록
 - 좌/우 힌트: 최신 해금 구종이 맨 위, 각 사이드 세로 중앙 정렬 (`--hint-offset`), 새 공 추가 시 기존 공이 부드럽게 내려감
 
 ### 공 이미지
@@ -101,7 +103,7 @@ badball-hitter/
 | SINGLE! | 0.7초 초과 남김 | 1 | 짧게 |
 | FOUL | 마지막 0.7초 | 0.7 | 옆으로 크게 빠짐 |
 - 타이머 바 색 = 지금 치면 받을 등급(`timerLevelAt`): hr 금 / safe 초록 / warn 노랑 / danger 빨강 깜빡임. 바 위 픽셀 화살표로 경계(2.7s 금·2.1s 초록·0.7s 빨강) 표시
-- 판정 결과는 타이머 바 아래(`.hit-label`)에 작게 0.7초. 홈런 수는 결과 화면 Hits 행 sub(`AVG · HR n`)
+- 판정 결과는 타이머 바 아래(`.hit-label`)에 작게 0.7초. 홈런 수·홈런 점수는 결과 화면 Home Run 행
 
 ### 게임 규칙
 - **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색으로 남은 피버 시간을 표시하고 초 숫자도 크게 보여줌(타자 옆 게이지는 숨김)
@@ -114,16 +116,17 @@ badball-hitter/
 - **햅틱**: 정타 `tickWeak`, 홈런 `tap`, 아웃 `error`, 피버 시작 `success`, 피버 연타 `tickWeak`(최소 50ms 간격). 토스 앱 설정 > 진동이 켜져 있어야 동작
 - **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
 
-### Bat Speed / 최종 점수 (결과 화면)
-- **Bat Speed**: 일반 모드 정답 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정답 0개면 `null`
-- **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) + Bat Speed 보너스(`max(0, mph − 50) × hits`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
-- Fever Taps 점수(`× FEVER_TAP_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
+### 최종 점수 (결과 화면)
+- **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
+- Fever Taps 점수(`× FEVER_TAP_POINTS`)와 홈런 타구 점수(`homeRunPtsRef` 누적)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
+- Hits 행 옆 타율(AVG)은 LED 배지(`.box-avg`)로 강조
 - 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
-- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Fever Taps / Max Combo / Bat Speed)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
-- 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `HOME RUN!` 배너
+- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Home Run / Fever Taps / Max Combo)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
+- 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `NEW BEST SCORE` 배너, 아니면 FINAL SCORE 아래 매달린 BEST 전광판
+- 버튼: `Play again!`(Press Start 2P 16px, 가운데 넓게) 아래 줄에 메인화면 · 공유하기(Galmuri14 14px)
 
 ## 상황별 연출 (새 픽셀아트 없이 CSS)
 - `sceneMood` = `'out'`(아웃 후 1.2초, `outFlash`) > `'fever'` > `'hype'`(30콤보+) > `'normal'` → `.game-screen.scene-*` 클래스로 CSS에서 분기
@@ -191,7 +194,7 @@ scores (id uuid, nickname text, team_id text, score int,
 ```
 - RLS: scores INSERT 누구나, SELECT 전체 공개
 - `src/lib/supabase.js` 파일 생성해서 연동
-- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, homeRuns, unlockStep, batSpeed, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
+- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, homeRuns, homeRunPts, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
 - 컴포넌트: PascalCase (`GameScreen.jsx`), 화면별 폴더 (`Game/`, `Title/`)

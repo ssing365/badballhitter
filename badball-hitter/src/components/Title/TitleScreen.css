@@ -12,6 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  --pixel-font: 'Press Start 2P', 'Galmuri11', monospace;
 }
 
 .title-scrim {
@@ -74,65 +75,135 @@
   animation: title-in 0.7s 0.12s ease-out both;
 }
 
+/* Play Ball! — 결과 화면 Play again!과 같은 스타일 (주황빛 노란 블록 + 안팎 글로우) */
 .btn-play-ball {
+  position: relative;
   margin-top: 2.4rem;
   width: min(280px, 82%);
-  padding: 1.05rem 1.5rem;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
-  color: #422006;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  min-height: 60px;
+  padding: 0 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #111827;
+  border-radius: 12px;
+  /* 안쪽 글로우 — 가운데가 밝고 가장자리는 주황빛 */
+  background: radial-gradient(ellipse 75% 100% at 50% 40%, #fef08a 0%, #facc15 55%, #f59e0b 100%);
+  /* Press Start 2P — 8px 격자라 16px(2배)에서 선명 */
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   box-shadow:
-    0 4px 0 #a16207,
-    0 12px 28px rgba(0, 0, 0, 0.35);
-  transition: transform 0.12s, box-shadow 0.12s;
-  animation: title-in 0.7s 0.22s ease-out both;
+    inset 0 0 12px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 0 #d97706,
+    inset 0 3px 0 #fde68a,
+    0 5px 0 #111827,
+    0 12px 22px rgba(0, 0, 0, 0.35);
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+  /* 등장은 translate로 — transform은 hover·누름용으로 비워둠 */
+  animation:
+    title-btn-in 0.7s 0.22s ease-out both,
+    play-glow 2.4s 0.9s ease-in-out infinite;
 }
 
-.btn-play-ball:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 6px 0 #a16207,
-    0 16px 32px rgba(0, 0, 0, 0.4);
+@keyframes play-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(251, 176, 36, 0.35)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(249, 145, 22, 0.6)); }
 }
 
-.btn-play-ball:active {
-  transform: translateY(2px);
+/* 글씨 — 진한 갈색→검정 그라데이션 + 아래 하이라이트로 음각 느낌 */
+.btn-play-ball-text {
+  background: linear-gradient(180deg, #5c1f08 0%, #3b1204 45%, #0f0501 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 247, 200, 0.55));
+}
+
+/* 안쪽 실밥 점선 — 야구공 스티치 느낌 */
+.btn-play-ball::after {
+  content: '';
+  position: absolute;
+  inset: 4px 5px 6px;
+  border: 1.5px dashed rgba(161, 98, 7, 0.45);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .btn-play-ball:not(:disabled):hover {
+    transform: translateY(-2px);
+    background: radial-gradient(ellipse 75% 100% at 50% 40%, #fef9c3 0%, #fde047 55%, #fbbf24 100%);
+    box-shadow:
+      inset 0 0 16px rgba(255, 255, 255, 0.6),
+      inset 0 -4px 0 #d97706,
+      inset 0 3px 0 #fef9c3,
+      0 7px 0 #111827,
+      0 16px 28px rgba(0, 0, 0, 0.4),
+      0 0 18px rgba(250, 204, 21, 0.45);
+  }
+
+  .btn-ranking:hover { color: #facc15; }
+}
+
+/* 누르면 그림자만큼 푹 눌림 */
+.btn-play-ball:not(:disabled):active {
+  transform: translateY(5px);
   box-shadow:
-    0 2px 0 #a16207,
-    0 8px 16px rgba(0, 0, 0, 0.3);
+    inset 0 0 12px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 0 #d97706,
+    inset 0 3px 0 #fde68a,
+    0 0 0 #111827,
+    0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.btn-play-ball:focus-visible {
+  outline: 3px solid #fde68a;
+  outline-offset: 3px;
 }
 
 .btn-play-ball:disabled {
   opacity: 0.6;
   cursor: wait;
-  transform: none;
 }
 
+/* Ranking — 결과 화면 메인화면 버튼과 같은 픽셀 텍스트 버튼 */
 .btn-ranking {
-  margin-top: 1rem;
-  padding: 0.35rem 0.75rem;
+  margin-top: 0.75rem;
+  min-height: 44px;
+  padding: 0 16px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: 'Galmuri11', var(--pixel-font);
+  font-size: 13px;
   letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
   cursor: pointer;
   transition: color 0.12s;
   animation: title-in 0.7s 0.32s ease-out both;
 }
 
-.btn-ranking:hover {
-  color: #fff;
+@keyframes title-btn-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-play-ball {
+    animation: none;
+  }
 }
 
 @keyframes title-in {

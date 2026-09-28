@@ -4,7 +4,7 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage,
-  FEVER_TAP_POINTS, calcBatSpeed, getHitGrade,
+  FEVER_TAP_POINTS, getHitGrade,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
 } from '../constants'
 import {
@@ -106,7 +106,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const scorePopTimeouts = useRef({})
   const hitLabelTimeout = useRef(null)
   const hrFlashTimeout = useRef(null)
-  const reactionRef = useRef({ sum: 0, count: 0 })  // 정답 스윙 반응시간 누적 (Bat Speed용)
+  const homeRunPtsRef = useRef(0)  // 홈런 타구로 얻은 점수 누적 (결과 화면 Home Run 행)
+  const gradeBonusRef = useRef(0)  // 타격 등급 배율로 더해진(파울은 깎인) 점수 누적 — 해금 판정에서 제외
 
   // ── 피버 차지 (0~FEVER_CHARGE_MAX, 소수 — 입력 없으면 서서히 감소) ──
   const chargeRef = useRef(0)
@@ -268,7 +269,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
     cancelAnimationFrame(timerRaf.current)
     clearInterval(feverTimer.current)
     const s = stateRef.current
-    const { sum, count } = reactionRef.current
     // TODO: Supabase — save score (결과 화면의 finalScore 기준)
     setTimeout(() => {
       onGameOver({
@@ -279,7 +279,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         feverTaps: s.feverTaps,
         homeRuns: s.homeRuns,
         unlockStep: s.unlockStep,
-        batSpeed: count > 0 ? calcBatSpeed(sum / count) : null,
+        homeRunPts: homeRunPtsRef.current,
         pitchBallImages,
       })
     }, 400)
@@ -371,12 +371,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (isCorrect) {
       playHitSfx()
       haptic(isHomeRun ? 'tap' : 'tickWeak')
-      reactionRef.current.sum += reactionMs
-      reactionRef.current.count += 1
       const newCombo = curCombo + 1
       const newMax = Math.max(newCombo, curMax)
-      const pts = Math.round(calcScore(newCombo) * hitGrade.mult)
+      const basePts = calcScore(newCombo)
+      const pts = Math.round(basePts * hitGrade.mult)
       const newScore = curScore + pts
+      gradeBonusRef.current += pts - basePts
       const newCorrect = curCrt + 1
 
       setCombo(newCombo)
@@ -389,12 +389,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
       if (isHomeRun) {
         const newHomeRuns = stateRef.current.homeRuns + 1
         setHomeRuns(newHomeRuns)
+        homeRunPtsRef.current += pts
         stateRef.current = { ...stateRef.current, homeRuns: newHomeRuns }
         triggerHrFlash()
       }
 
-      // 구종 해금 (첫 공은 콤보, 이후는 점수 기준)
-      const reachedStep = getUnlockStep(curUnlockStep, newCombo, newScore)
+      // 구종 해금 (첫 공은 콤보, 이후는 점수 기준) — 배율 보너스를 뺀 점수로 판정해 해금 속도·등급 밸런스 유지
+      const reachedStep = getUnlockStep(curUnlockStep, newCombo, newScore - gradeBonusRef.current)
       const isUnlocking = reachedStep > curUnlockStep
 
       // 피버 차지 — 가득 차면 발동, 해금과 겹치면 새 구종을 먼저 보여주도록 차지를 되돌려 미룸

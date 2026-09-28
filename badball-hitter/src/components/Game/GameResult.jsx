@@ -190,12 +190,14 @@ export default function GameResult({ stats, onRetry, onHome }) {
         <div className={`result-best${done ? ' show' : ''}`}>
           {isNewRecord ? (
             <div className="home-run">
-              <span className="home-run-text">HOME RUN!</span>
-              <span className="home-run-sub">New best score</span>
+              <span className="home-run-text">NEW BEST SCORE!!</span>
               <img className="home-run-ball" src="/assets/balls/white.png" alt="" draggable={false} />
             </div>
           ) : (
-            <span className="best-text">BEST {best != null ? best.toLocaleString('en-US') : '-'}</span>
+            <div className="best-board">
+              <span className="best-board-label">BEST</span>
+              <span className="best-board-num">{best != null ? best.toLocaleString('en-US') : '-'}</span>
+            </div>
           )}
         </div>
 
@@ -209,7 +211,12 @@ export default function GameResult({ stats, onRetry, onHome }) {
             <div key={r.id} className={`box-row${done || i <= stage ? ' lit' : ''}`}>
               <span className="box-label">
                 {r.label}
-                {r.sub && <span className="box-sub">{r.sub}</span>}
+                {r.avg && (
+                  <span className="box-avg">
+                    <span className="box-avg-label">AVG</span>
+                    {r.avg}
+                  </span>
+                )}
               </span>
               <span className="box-value">{r.value}</span>
               <span className="box-pts">+{r.pts.toLocaleString('en-US')}</span>
@@ -246,12 +253,16 @@ export default function GameResult({ stats, onRetry, onHome }) {
         {/* <Leaderboard currentScore={finalScore} /> */}
 
         <div className="result-actions">
-          <button className="btn-retry" onClick={onRetry}>다시 하기</button>
-          <button className="btn-share" onClick={handleShare}>공유하기</button>
+          <button className="btn-retry" onClick={onRetry}>
+            <span className="btn-retry-text">Play again!</span>
+          </button>
+          <div className="result-sub-actions">
+            {onHome && (
+              <button className="btn-home" onClick={onHome}>메인화면</button>
+            )}
+            <button className="btn-share" onClick={handleShare}>공유하기</button>
+          </div>
         </div>
-        {onHome && (
-          <button className="btn-home" onClick={onHome}>타이틀로</button>
-        )}
       </div>
       {toast && <div className="result-toast">{toast}</div>}
     </div>

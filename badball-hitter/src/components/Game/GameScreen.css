@@ -547,6 +547,18 @@
     transition: top 0.35s ease;
   }
 
+  /* 뒤에 은은한 어두운 그림자 — 콤보처럼 배경 위에서도 공·구종명이 또렷하게 (위아래 겹쳐도 과하지 않게 옅게) */
+  .hint-item::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 96px; height: 88px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.22) 55%, transparent);
+    z-index: -1;
+    pointer-events: none;
+  }
+
   .hint-pop {
     display: flex;
     flex-direction: column;
