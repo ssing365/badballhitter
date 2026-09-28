@@ -11,8 +11,11 @@ import {
   playHitSfx, playFeverHitSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
   isMuted, setMuted,
 } from '../../lib/sound'
+import { haptic, isHapticSupported, isHapticOn, setHapticOn } from '../../lib/haptic'
 import volumeIcon from '../../assets/icons/volume.svg'
 import volumeXmarkIcon from '../../assets/icons/volume-xmark.svg'
+import vibrateIcon from '../../assets/icons/vibrate.svg'
+import vibrateOffIcon from '../../assets/icons/vibrate-off.svg'
 import Crowd from './Crowd'
 import Fielders from './Fielders'
 import './GameScreen.css'
@@ -69,6 +72,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   })
   const [paused, setPaused] = useState(false)
   const [soundMuted, setSoundMuted] = useState(isMuted)
+  const [hapticOn, setHapticOnState] = useState(isHapticOn)
   const [timerLevel, setTimerLevel] = useState('safe') // 'safe' | 'warn' | 'danger'
   const [timerNum, setTimerNum] = useState(TIMER_MAX.toFixed(1))
   const [fever, setFever] = useState(false)
@@ -230,6 +234,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     playSfx('fever')
     playSfx('feverCrowd')
     duckBgm(true)
+    haptic('success')
     runFeverClock(FEVER_DURATION * 1000)
   }, [runFeverClock])
 
@@ -262,6 +267,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     setCombo(0)
     chargeRef.current = 0
     showPop('TIME UP!', 'bad')
+    haptic('error')
     playSfx('crowdDisappointment')  // 스윙 없이 아웃 — 관중 탄식만
     const newOuts = curOuts + 1
     setOuts(newOuts)
@@ -292,6 +298,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     // 피버 중 — 좌우 구분 없이 연타, 공은 일반처럼 날아감 (아웃 없음, 점수는 피버 종료 시 합산)
     if (isFever) {
       playFeverHitSfx()
+      haptic('tickWeak')
       triggerSwing(dir)
       const newTaps = curTaps + 1
       const newRoundTaps = curRoundTaps + 1
@@ -335,6 +342,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     if (isCorrect) {
       playHitSfx()
+      haptic('tickWeak')
       reactionRef.current.sum += performance.now() - timerStart.current
       reactionRef.current.count += 1
       const newCombo = curCombo + 1
@@ -383,6 +391,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     } else {
       const newOuts = curOuts + 1
       playMissSfx()
+      haptic('error')
       setCombo(0)
       chargeRef.current = 0
       setClassified(newClassified)
@@ -456,6 +465,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const next = !soundMuted
     setMuted(next)
     setSoundMuted(next)
+  }
+
+  const toggleHaptic = (e) => {
+    e.currentTarget.blur()
+    const next = !hapticOn
+    setHapticOn(next)
+    setHapticOnState(next)
   }
 
   // 탭 전환·앱 이탈 시 자동 일시정지
@@ -795,6 +811,24 @@ export default function GameScreen({ onGameOver, onQuit }) {
               />
               SOUND {soundMuted ? 'OFF' : 'ON'}
             </button>
+            {/* 진동 — 토스 앱 안에서만 동작하므로 웹에서는 숨김 */}
+            {isHapticSupported() && (
+              <button
+                type="button"
+                className="pause-menu-btn"
+                onClick={toggleHaptic}
+                aria-pressed={hapticOn}
+              >
+                <span
+                  className="pause-sound-icon"
+                  style={{
+                    maskImage: `url("${hapticOn ? vibrateIcon : vibrateOffIcon}")`,
+                    WebkitMaskImage: `url("${hapticOn ? vibrateIcon : vibrateOffIcon}")`,
+                  }}
+                />
+                VIBRATION {hapticOn ? 'ON' : 'OFF'}
+              </button>
+            )}
             <button type="button" className="pause-menu-btn" onClick={onQuit}>
               QUIT
             </button>
