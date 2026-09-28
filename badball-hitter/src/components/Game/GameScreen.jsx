@@ -17,11 +17,12 @@ import Crowd from './Crowd'
 import Fielders from './Fielders'
 import './GameScreen.css'
 
-// 공 대기열 레이아웃 — 앞(index 0)이 크고, 뒤로 갈수록 작게 겹침
+// 공 대기열 레이아웃 — 레인 바닥 기준, 맨 앞(index 0)이 쳐야 할 공이라 크게, 뒤로 갈수록 작게 겹침
+// (bottom 기준이라 앞 공이 커져도 위로 자라서 아래 타이머와 겹치지 않음)
 const ballLaneLayout = (index) => ({
-  top: `${86 - index * 5.5}%`,
+  bottom: index === 0 ? '0%' : `${9 + (index - 1) * 5.5}%`,
   zIndex: 24 - index,
-  '--ball-scale': `${1 - index * 0.085}`,
+  '--ball-scale': index === 0 ? '1.3' : `${1 - index * 0.085}`,
 })
 
 // 공마다 고유 uid — 렌더 key로 사용 (같은 구종이 연속돼도 공 교체가 보이도록)
