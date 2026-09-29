@@ -796,6 +796,7 @@
   /* 타자 + 피버 게이지 — 게이지는 타자 크기 변화(batter-wrap scale)와 무관하게 오른쪽에 고정 */
   .batter-slot {
     position: relative;
+    left: 20px;               /* 홈플레이트보다 살짝 우측 (우타석) */
   }
 
   .fever-gauge {
@@ -854,11 +855,12 @@
     position: relative;
     z-index: 0;
     transform-origin: bottom center;
+    scale: 1.15;              /* 기본도 살짝 크게 — hype 1.25 / 피버 1.4와 차이를 줄임 */
     transition: scale 0.3s steps(3, end), translate 0.2s steps(2, end), rotate 0.2s steps(2, end);
     animation: breathe 1.2s steps(1, end) infinite;
   }
 
-  .scene-hype .batter-wrap { scale: 1.12; }
+  .scene-hype .batter-wrap { scale: 1.25; }
   .scene-hype .batter-sprite { animation: aura-hype 0.5s steps(1, end) infinite; }
 
   .scene-fever .batter-wrap { scale: 1.4; }
