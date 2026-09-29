@@ -520,21 +520,17 @@
     height: 48px;
   }
 
-  /* ── 피버 공 — 이미지 정중앙이 공 본체라 불꽃까지 들어가게 크게 그리고 음수 margin으로 중심 유지 ── */
+  /* ── 피버 금테 공 — 금테·반짝이까지 들어가게 조금 크게, 음수 margin으로 중심 유지 ── */
   .ball-sprite.lane.fever {
-    width: 96px;
-    height: 96px;
-    margin: -24px;
+    width: 64px;
+    height: 64px;
+    margin: -8px;
     max-width: none;
-    rotate: -45deg;           /* 꼬리가 위(투수 쪽)를 향하게 — 타자 쪽으로 내려오는 느낌 */
   }
-  /* 친 공은 꼬리가 날아가는 반대쪽을 향하게 */
-  .fly-hit-left .ball-sprite.fever { rotate: 90deg; }
-  .fly-hit-right .ball-sprite.fever { rotate: 180deg; }
 
-  /* 맨 앞 공 글로우 — 피버 땐 흰빛 대신 주황빛 */
+  /* 맨 앞 공 글로우 — 피버 땐 흰빛 대신 금빛 */
   .ball-lane.fever .ball-item-wrap.depth-0 .ball-item {
-    filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.8)) drop-shadow(0 0 10px rgba(249, 115, 22, 0.7));
+    filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.9)) drop-shadow(0 0 10px rgba(250, 204, 21, 0.6));
   }
 
   .ball-sprite.hint {
@@ -935,6 +931,31 @@
     filter: drop-shadow(0 0 4px #f97316);
   }
 
+  /* 파워 스윙 — 크고 두꺼운 궤적 */
+  .swing-trail.power {
+    scale: 1.6;
+    border-width: 8px;
+    border-color: #fff7cc;
+    filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 12px #f97316);
+  }
+  .swing-trail.power.left { animation-duration: 0.4s; }
+  .swing-trail.power.right { animation-duration: 0.4s; }
+
+  /* 파워 충전 중 — 뒤로 젖히고 부르르 떨며 기 모으기 */
+  .batter-wrap.charging {
+    rotate: -8deg;
+    animation: charge-shake 0.08s steps(1, end) infinite;
+  }
+  .batter-wrap.charging .batter-sprite {
+    filter: drop-shadow(0 0 4px #fff7cc) drop-shadow(0 0 10px #facc15) drop-shadow(0 -4px 12px #f97316);
+    animation: none;
+  }
+
+  @keyframes charge-shake {
+    0%  { transform: translateX(-1px); }
+    50% { transform: translateX(1px); }
+  }
+
   @keyframes trail-left {
     0%   { clip-path: inset(0 0 0 100%); opacity: 1; }
     50%  { clip-path: inset(0 0 0 0); opacity: 1; }
@@ -1034,16 +1055,16 @@
     --btn-shade: 0 0 transparent;
     --btn-arrow: #ffffff;
   }
-  /* 피버 — 두 버튼이 번갈아 콩콩 눌리며 연타 유도 (실제로 누르는 중엔 눌림 상태 우선) */
+  /* 피버 — 두 버튼이 함께 천천히 빛나며 꾹 누르기 유도 (누르는 중엔 눌림 상태 우선) */
   .scene-fever .dir-btn:not(.pressed):not(:active) {
-    animation: fever-btn-pulse 0.4s steps(1, end) infinite;
+    animation: fever-btn-glow 0.6s steps(1, end) infinite;
   }
-  .scene-fever .btn-row > .dir-btn:last-child { animation-delay: -0.2s; }
 
-  @keyframes fever-btn-pulse {
-    0%  { transform: translateY(0); }
-    50% { transform: translateY(calc(var(--btn-depth) / 2)); }
+  @keyframes fever-btn-glow {
+    0%  { filter: drop-shadow(0 0 2px #fde047); }
+    50% { filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 14px #f97316); }
   }
+
 
   /* 피버 — 버튼 위 TAP! 말풍선, 좌우 번갈아 깜빡임 */
   .tap-badge {
@@ -1235,7 +1256,8 @@
     .fever-gauge-track,
     .timer-track,
     .score-pop,
-    .swing-trail { animation: none !important; }
+    .swing-trail,
+    .batter-wrap.charging { animation: none !important; }
     .swing-trail { display: none !important; }
     .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }
     .scene-fever .dir-btn,

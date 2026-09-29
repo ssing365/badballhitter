@@ -29,8 +29,8 @@ badball-hitter/
 │   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
 │   │       ├── watermelon.png    # 수박 연타 공 (원본 assets-src/balls/, 144px)
-│   │       ├── feverball.png     # (미사용)
-│   │       └── old_feverball.png # 피버 공 (원본 assets-src/balls/, 공 본체 정중앙으로 잘라 320px)
+│   │       ├── fever_<색>.png    # 피버 중 금테 공 (white/blue/green/purple/red/nurcle, 원본 assets-src/balls/, 192px)
+│   │       └── feverball.png     # (미사용)
 │   └── sounds/
 │       ├── Pinball Spring.mp3        # BGM normal (타이틀/결과)
 │       ├── Pinball Spring 160.mp3    # BGM fast (게임 플레이)
@@ -91,8 +91,7 @@ badball-hitter/
 ### 공 이미지
 - 전 구종 이미지 사용 (`IMAGE_PITCH_IDS`)
 - fastball = `white.png` 고정, 나머지 5개는 `COLOR_BALL_FILES` 셔플 배정 (`createPitchBallImages`, 게임마다)
-- 피버 중에는 레인·타구 공이 전부 불타는 공(`FEVER_BALL_IMAGE`, `.ball-sprite.lane.fever` 96px + 음수 margin) — 레인은 꼬리가 위로 -45°, 친 공은 꼬리가 날아가는 반대쪽. 맨 앞 공 글로우는 흰빛 대신 주황빛. 좌/우 힌트 공은 그대로
-- 피버 공 이미지는 공 본체가 정중앙이 되게 잘라둠 (원본 `assets-src/balls/old_feverball.png`, 320px)
+- 피버 중에는 레인·타구 공이 같은 색 금테 공(`toFeverBallImage` → `fever_<색>.png`, `.ball-sprite.lane.fever` 64px + 음수 margin), 맨 앞 공 글로우는 금빛. 좌/우 힌트 공과 수박은 그대로
 - 이미지가 없으면 color + text 원형으로 렌더 (폴백)
 
 ### 점수 공식
@@ -110,28 +109,28 @@ badball-hitter/
 - 판정 결과는 타이머 바 아래(`.hit-label`)에 작게 0.7초. 홈런 수·홈런 점수는 결과 화면 Home Run 행
 
 ### 게임 규칙
-- **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색으로 남은 피버 시간을 표시하고 초 숫자도 크게 보여줌(타자 옆 게이지는 숨김)
+- **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색 파워 충전 바가 되고 초 숫자는 남은 피버 시간(타자 옆 피버 게이지는 숨김)
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
 - **입력 반응**: 판정 즉시 대기열 보충 + 다음 공 타이머 시작 (대기 없이 연타 가능). 리렌더 전 연속 입력도 맞게 판정하도록 `judge`가 바뀐 값을 `stateRef`에 바로 반영
-- **피버 차지 바**(타자 왼쪽 세로 게이지 `.fever-gauge.power`, 14×120px): 정타(파울 포함) 1회당 +1, `FEVER_CHARGE_MAX = 40`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과) 시 절반, 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 남은 피버 시간을 그림)
+- **피버 차지 바**(타자 왼쪽 세로 게이지 `.fever-gauge.power`, 14×120px): 정타(파울 포함) 1회당 +1, `FEVER_CHARGE_MAX = 40`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과) 시 절반, 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 파워를 그림)
 - **수박 차지 바**(타자 바로 왼쪽 `.fever-gauge.melon` — 피버 바·수박 바·타자 순, `cycleChargeRef`): 파울 제외 정타 1회당 +1, `CYCLE_CHARGE_MAX = 15`에 도달하면 `WATERMELON!` 팝업 + 다음에 채워지는 공 `WATERMELON_MIN~MAX`(8~11)개가 수박(`buildQueue`의 `melonPendingRef`, 대기열 뒤에서 들어옴). 감소 규칙은 피버 바와 같음, 아웃 시 0, 해금과 겹치면 미룸. 수박이 남아 있는 동안(`melonActiveRef`)은 게이지가 가득 찬 채로 멈추고, 마지막 수박을 치면 0. 피버 중엔 수박을 대기열에 들이지 않음
 - **수박 연타**: 맨 앞 공이 수박이면(`melonFront`) 방향 무관 — 누를 때마다 1개 `WATERMELON_POINTS`(100) 즉시 가산(결과 화면에선 Hits에 포함), 콤보·차지·타율 변화 없음. 타이머는 평소처럼 돌아서 놓치면 TIME UP. 타이머 아래 수박색 "마구 눌러요!"(`.fever-sub.melon`)·TAP! 안내
-- **피버**: `FEVER_DURATION = 4`초간 좌우 무관 연타, 타이머 정지·아웃 없음. 타이머 바 아래 "마구 눌러요!", 방향 버튼 위 `TAP!` 말풍선 + 버튼이 번갈아 눌리는 펄스로 연타 유도. 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이). 중앙에 이번 피버 연타 수(`feverRoundTaps`)를 표시하고, 종료 시 `연타 × FEVER_TAP_POINTS(100)`를 한 번에 점수에 더함(전광판 옆 금색 `+N` 팝업)
+- **피버(파워 스윙)**: 시작 후 `FEVER_READY_MS`(0.8초)는 입력 무시(연타 관성 방지, 카운트다운은 4초로 표시), 이어서 `FEVER_DURATION = 4`초 안에 방향 버튼(좌우 무관)을 꾹 눌러 파워 충전 → 떼면 파워 스윙 한 번(`powerSwing`). `POWER_MIN_HOLD_MS`(0.25초)보다 짧게 눌렀다 떼면 스윙 없이 충전 취소, 타이머 정지·아웃 없음. 누른 시간 / `POWER_FULL_MS`(1.5초) = 파워, 공 `powerBallCount` = `POWER_BALLS_MIN~MAX`(3~15)개가 `POWER_BALL_INTERVAL_MS`(60ms) 간격으로 따라라락 날아감(대기열과 별개로 만든 공, 홈런 궤적). 4초가 끝나면 그 시점 파워로 자동 스윙(안 눌렀으면 3개). 날린 공 × `POWER_BALL_POINTS`(300)를 피버 종료 시 합산(전광판 아래 금색 `+N`). 중앙에 `BALLS` 예상 개수, 타이머 아래 "꾹 눌렀다 떼요!" → "떼면 풀스윙!" → "따라라락!", 버튼 위 `HOLD!`. 충전 중 타자는 뒤로 젖히고 떨며 금빛 오라(`.batter-wrap.charging`), 스윙 궤적은 크게(`.swing-trail.power`). 입력은 누름=`judge`, 뗌=`release`(버튼 `onPointerUp/Cancel` + pointer capture, 키보드 `keyup`, 키 자동 반복은 무시). 일시정지 시 누른 시간 보존(`powerHeldMsRef`). 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이)
 - **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Vibration on·off(토스 웹뷰에서만) / Quit(타이틀)
 - **공 대기열**: `QUEUE_SIZE = 8`개, 레인 바닥 기준(`ballLaneLayout`, bottom %) — 맨 앞(쳐야 할 공)은 1.3배 + 흰 글로우, 뒤로 갈수록 작게 겹쳐 표시. 앞 공이 커져도 위로 자라서 타이머와 안 겹침
-- **처리된 공 연출**(`flyBalls`, 레인 밖 `.fly-layer` z 33): 판정 즉시 큐에서 빼고 keyframes 재생 후 `onAnimationEnd`로 제거. `hit`(친 방향 관중석으로 직선 → 끝에서 살짝 떨어지며 흐려짐, 좌/우 궤적 2종 `v0`/`v1` 랜덤, 등급별 거리) / `miss`(헛스윙 — 배트 반대쪽으로 비켜 몸쪽으로 커지며 지나감) / `take`(시간 초과 — 가운데로 지나감). 피버 연타도 `hit`
-- **햅틱**: 정타 `tickWeak`, 홈런 `tap`, 아웃 `error`, 피버 시작 `success`, 피버 연타 `tickWeak`(최소 50ms 간격). 토스 앱 설정 > 진동이 켜져 있어야 동작
+- **처리된 공 연출**(`flyBalls`, 레인 밖 `.fly-layer` z 33): 판정 즉시 큐에서 빼고 keyframes 재생 후 `onAnimationEnd`로 제거. `hit`(친 방향 관중석으로 직선 → 끝에서 살짝 떨어지며 흐려짐, 좌/우 궤적 2종 `v0`/`v1` 랜덤, 등급별 거리) / `miss`(헛스윙 — 배트 반대쪽으로 비켜 몸쪽으로 커지며 지나감) / `take`(시간 초과 — 가운데로 지나감). 파워 스윙 공도 `hit`(`fever: true`면 금테 공)
+- **햅틱**: 정타 `tickWeak`, 홈런 `tap`, 아웃 `error`, 피버 시작·파워 스윙 `success`, 피버 충전 시작·파워 스윙 공마다·수박 `tickWeak`(최소 50ms 간격). 토스 앱 설정 > 진동이 켜져 있어야 동작
 - **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
 
 ### 최종 점수 (결과 화면)
 - **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
-- Fever Taps 점수(`× FEVER_TAP_POINTS`)와 홈런 타구 점수(`homeRunPtsRef` 누적)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
+- Power Swing 점수(날린 공 `× POWER_BALL_POINTS`)와 홈런 타구 점수(`homeRunPtsRef` 누적)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
 - Hits 행 옆 타율(AVG)은 LED 배지(`.box-avg`)로 강조
 - 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
-- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Home Run / Fever Taps / Max Combo)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
+- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Home Run / Power Swing / Max Combo)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
 - 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `NEW BEST SCORE` 배너, 아니면 FINAL SCORE 아래 매달린 BEST 전광판
 - 버튼: `Play again!`(Press Start 2P 16px, 가운데 넓게) 아래 줄에 메인화면 · 공유하기(Galmuri14 14px)
 
@@ -171,11 +170,11 @@ stopBgm()
 - `.game-screen`은 `container-type: size` — 자식에서 `cqh` 단위 사용 (배경이 높이 기준 cover라 배경 위치 맞출 때 유용)
 - 점수: 배경 전광판 화면 위 `.scoreboard` (top 15.3cqh, 23.8×7cqh, 앰버 LED 픽셀 폰트)
 - 우상단 HUD: 일시정지 버튼 (`.pause-btn`)
-- 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에는 연타 수(top 45%)
+- 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에는 파워 스윙 예상 공 수 `BALLS`(top 45%)
 - 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 42%, `showPop(text, tone)`) — `new` 보라~핑크 그라데이션 + 빛줄기, `bad` 22px 빨강→검붉은 그라데이션 + 검은 그림자, 등장 후 축 처짐
 - 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
 - 공 레인: width 54px, 중앙 세로, top 13% ~ bottom `calc(25% + 48px)` (타이머 위에서 끝남)
-- 타이머(`.timer-wrap`, bottom 25%, 좌우 10%): grid `[바 | 초]` + 아래 줄(타격 결과 / 피버 땐 "마구 눌러요!"). 전체 높이가 레인 아래 여백 48px 안이어야 맨 앞 공을 안 가림
+- 타이머(`.timer-wrap`, bottom 25%, 좌우 10%): grid `[바 | 초]` + 아래 줄(타격 결과 / 피버·수박 땐 안내 문구). 전체 높이가 레인 아래 여백 48px 안이어야 맨 앞 공을 안 가림
 - 공 아이템: 48×48px (맨 앞 1.3배)
 - 힌트 공: 48×48px
 - 방향 버튼: 76×58px
@@ -201,7 +200,7 @@ scores (id uuid, nickname text, team_id text, score int,
 ```
 - RLS: scores INSERT 누구나, SELECT 전체 공개
 - `src/lib/supabase.js` 파일 생성해서 연동
-- `onGameOver` stats: `{ score, correct, classified, maxCombo, feverTaps, homeRuns, homeRunPts, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
+- `onGameOver` stats: `{ score, correct, classified, maxCombo, powerBalls, homeRuns, homeRunPts, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
 - 컴포넌트: PascalCase (`GameScreen.jsx`), 화면별 폴더 (`Game/`, `Title/`)

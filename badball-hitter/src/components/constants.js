@@ -29,11 +29,11 @@ export const createPitchBallImages = () => {
   return images
 }
 
-// 피버 중 레인·타구 공 (공 본체가 이미지 정중앙, 꼬리는 오른쪽 위)
-export const FEVER_BALL_IMAGE = '/assets/balls/old_feverball.png'
-
 export const getPitchBallImage = (pitchId, pitchBallImages) =>
   pitchBallImages[pitchId] ?? null
+
+// 피버 중엔 같은 색의 금테 공 (balls/fever_<name>.png)
+export const toFeverBallImage = (src) => src?.replace(/\/balls\/(\w+)\.png$/, '/balls/fever_$1.png') ?? null
 
 // 시작 구종 2개 — 좌/우 하나씩 랜덤 배치
 export const BASE_PITCHES = ['fastball', 'slider']
@@ -139,8 +139,20 @@ export const FEVER_CHARGE_DECAY_PER_SEC = 2
 // 구종 해금과 같은 hit에 차지가 가득 차면 되돌리는 양 (새 구종을 먼저 보여주기 위해 피버를 미룸)
 export const FEVER_UNLOCK_DELAY = 2
 
-// 피버 지속시간 (초)
+// 피버 지속시간 (초) — 이 안에 꾹 눌렀다 떼서 파워 스윙 한 번 (시간이 다 되면 그 시점 파워로 자동 스윙)
 export const FEVER_DURATION = 4
+
+// 파워 스윙 — 누른 시간만큼 파워(0~1)가 차고, 파워에 비례해 공 MIN~MAX개가 연달아 날아감
+export const POWER_FULL_MS = 1500
+export const POWER_BALLS_MIN = 3
+export const POWER_BALLS_MAX = 15
+export const POWER_BALL_INTERVAL_MS = 60
+// 피버 시작 후 입력을 무시하는 준비 시간 — 연타하던 손이 바로 스윙해버리지 않게 (충전 시간 4초와 별도)
+export const FEVER_READY_MS = 800
+// 이보다 짧게 눌렀다 떼면 스윙하지 않고 충전 취소 (연타 관성 방지)
+export const POWER_MIN_HOLD_MS = 250
+export const powerBallCount = (power) =>
+  POWER_BALLS_MIN + Math.round(power * (POWER_BALLS_MAX - POWER_BALLS_MIN))
 
 // 게임 종료 시 해금 단계(표시 구종 수) 기준 등급
 export const GRADES = [
@@ -155,7 +167,7 @@ export const getGrade = (unlockStep) => GRADES.find((g) => unlockStep >= g.step)
 // ─────────────────────────────────────────
 // 결과 화면 보너스
 // ─────────────────────────────────────────
-export const FEVER_TAP_POINTS = 100
+export const POWER_BALL_POINTS = 300
 export const COMBO_BONUS_PER = 100
 
 // 타율 표기 (.875 / 1.000)
@@ -163,15 +175,15 @@ export const formatAvg = (correct, classified) =>
   classified > 0 ? (correct / classified).toFixed(3).replace(/^0/, '') : '.000'
 
 // 결과 스탯표 행 + 최종 점수 (행 점수 합 = 최종 점수)
-export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, feverTaps, homeRuns = 0, homeRunPts = 0 }) => {
-  const feverPts = feverTaps * FEVER_TAP_POINTS
+export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, powerBalls = 0, homeRuns = 0, homeRunPts = 0 }) => {
+  const feverPts = powerBalls * POWER_BALL_POINTS
   const rows = [
     {
       id: 'hits', label: 'Hits', value: String(correct),
       avg: formatAvg(correct, classified), pts: score - feverPts - homeRunPts,  // 수박 점수도 Hits에 포함
     },
     { id: 'homerun', label: 'Home Run',  value: String(homeRuns), pts: homeRunPts },
-    { id: 'fever', label: 'Fever Taps', value: String(feverTaps), pts: feverPts },
+    { id: 'fever', label: 'Power Swing', value: String(powerBalls), pts: feverPts },
     { id: 'combo', label: 'Max Combo',  value: String(maxCombo), pts: maxCombo * COMBO_BONUS_PER },
   ]
   const finalScore = rows.reduce((sum, r) => sum + r.pts, 0)

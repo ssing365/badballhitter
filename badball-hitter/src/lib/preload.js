@@ -1,4 +1,4 @@
-import { COLOR_BALL_FILES, FEVER_BALL_IMAGE, WATERMELON_IMAGE } from '../components/constants'
+import { COLOR_BALL_FILES, WATERMELON_IMAGE } from '../components/constants'
 
 // 게임 화면에서 쓰는 이미지 — 타이틀에서 미리 받아둬서 첫 게임부터 바로 보이게
 export const GAME_IMAGES = [
@@ -9,7 +9,7 @@ export const GAME_IMAGES = [
   '/assets/batter_swing_r.png',
   '/assets/balls/white.png',
   ...COLOR_BALL_FILES.map((name) => `/assets/balls/${name}.png`),
-  FEVER_BALL_IMAGE,
+  ...['white', ...COLOR_BALL_FILES].map((name) => `/assets/balls/fever_${name}.png`),
   WATERMELON_IMAGE,
 ]
 
