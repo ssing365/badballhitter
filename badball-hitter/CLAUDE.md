@@ -28,6 +28,7 @@ badball-hitter/
 │   │   └── balls/
 │   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
+│   │       ├── watermelon.png    # 수박 연타 공 (원본 assets-src/balls/, 144px)
 │   │       ├── feverball.png     # (미사용)
 │   │       └── old_feverball.png # 피버 공 (원본 assets-src/balls/, 공 본체 정중앙으로 잘라 320px)
 │   └── sounds/
@@ -111,7 +112,10 @@ badball-hitter/
 ### 게임 규칙
 - **타이머**: 공 하나당 `TIMER_MAX = 3`초. 피버 게이지 톤의 픽셀 가로 바(`timerLevel` safe >2초 초록 / warn >1초 노랑 / danger 빨강 깜빡임). 피버 중에는 같은 바가 불꽃색으로 남은 피버 시간을 표시하고 초 숫자도 크게 보여줌(타자 옆 게이지는 숨김)
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
-- **피버 차지 바**(타자 오른쪽 세로 게이지): 정타 1회당 +1, `FEVER_CHARGE_MAX = 15`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과)이나 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 남은 피버 시간을 그림)
+- **입력 반응**: 판정 즉시 대기열 보충 + 다음 공 타이머 시작 (대기 없이 연타 가능). 리렌더 전 연속 입력도 맞게 판정하도록 `judge`가 바뀐 값을 `stateRef`에 바로 반영
+- **피버 차지 바**(타자 왼쪽 세로 게이지 `.fever-gauge.power`, 14×120px): 정타(파울 포함) 1회당 +1, `FEVER_CHARGE_MAX = 40`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과) 시 절반, 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 남은 피버 시간을 그림)
+- **수박 차지 바**(타자 바로 왼쪽 `.fever-gauge.melon` — 피버 바·수박 바·타자 순, `cycleChargeRef`): 파울 제외 정타 1회당 +1, `CYCLE_CHARGE_MAX = 15`에 도달하면 `WATERMELON!` 팝업 + 다음에 채워지는 공 `WATERMELON_MIN~MAX`(8~11)개가 수박(`buildQueue`의 `melonPendingRef`, 대기열 뒤에서 들어옴). 감소 규칙은 피버 바와 같음, 아웃 시 0, 해금과 겹치면 미룸. 수박이 남아 있는 동안(`melonActiveRef`)은 게이지가 가득 찬 채로 멈추고, 마지막 수박을 치면 0. 피버 중엔 수박을 대기열에 들이지 않음
+- **수박 연타**: 맨 앞 공이 수박이면(`melonFront`) 방향 무관 — 누를 때마다 1개 `WATERMELON_POINTS`(100) 즉시 가산(결과 화면에선 Hits에 포함), 콤보·차지·타율 변화 없음. 타이머는 평소처럼 돌아서 놓치면 TIME UP. 타이머 아래 수박색 "마구 눌러요!"(`.fever-sub.melon`)·TAP! 안내
 - **피버**: `FEVER_DURATION = 4`초간 좌우 무관 연타, 타이머 정지·아웃 없음. 타이머 바 아래 "마구 눌러요!", 방향 버튼 위 `TAP!` 말풍선 + 버튼이 번갈아 눌리는 펄스로 연타 유도. 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이). 중앙에 이번 피버 연타 수(`feverRoundTaps`)를 표시하고, 종료 시 `연타 × FEVER_TAP_POINTS(100)`를 한 번에 점수에 더함(전광판 옆 금색 `+N` 팝업)
 - **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Vibration on·off(토스 웹뷰에서만) / Quit(타이틀)
 - **공 대기열**: `QUEUE_SIZE = 8`개, 레인 바닥 기준(`ballLaneLayout`, bottom %) — 맨 앞(쳐야 할 공)은 1.3배 + 흰 글로우, 뒤로 갈수록 작게 겹쳐 표시. 앞 공이 커져도 위로 자라서 타이머와 안 겹침

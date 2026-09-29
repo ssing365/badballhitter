@@ -123,8 +123,15 @@ export const HIT_GRADES = [
 ]
 export const getHitGrade = (reactionMs) => HIT_GRADES.find((g) => reactionMs <= g.maxMs)
 
-// 피버 차지 — 정타 1회당 1씩 참, MAX 도달 시 피버 (아웃·피버 종료 시 0)
-export const FEVER_CHARGE_MAX = 15
+// 피버 차지 — 정타(파울 포함) 1회당 1씩 참, MAX 도달 시 피버 (아웃 시 절반, 피버 종료 시 0)
+export const FEVER_CHARGE_MAX = 40
+
+// 수박 차지 — 파울 제외 정타 1회당 1씩 참, MAX 도달 시 다음 공 WATERMELON_MIN~MAX개가 수박 (아웃 시 0)
+export const CYCLE_CHARGE_MAX = 15
+export const WATERMELON_MIN = 8
+export const WATERMELON_MAX = 11
+export const WATERMELON_POINTS = 100
+export const WATERMELON_IMAGE = '/assets/balls/watermelon.png'
 // 마지막 정타 후 이 시간이 지나면 차지가 서서히 줄어듦 (초당 DECAY_PER_SEC hit)
 export const FEVER_CHARGE_DECAY_DELAY_MS = 1000
 export const FEVER_CHARGE_DECAY_PER_SEC = 2
@@ -161,7 +168,7 @@ export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, fever
   const rows = [
     {
       id: 'hits', label: 'Hits', value: String(correct),
-      avg: formatAvg(correct, classified), pts: score - feverPts - homeRunPts,
+      avg: formatAvg(correct, classified), pts: score - feverPts - homeRunPts,  // 수박 점수도 Hits에 포함
     },
     { id: 'homerun', label: 'Home Run',  value: String(homeRuns), pts: homeRunPts },
     { id: 'fever', label: 'Fever Taps', value: String(feverTaps), pts: feverPts },

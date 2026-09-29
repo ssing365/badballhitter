@@ -6,6 +6,7 @@ import {
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, FEVER_BALL_IMAGE,
   FEVER_TAP_POINTS, getHitGrade,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
+  CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
 } from '../constants'
 import {
   playHitSfx, playFeverHitSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
@@ -40,12 +41,18 @@ const timerLevelAt = (elapsedMs) => GRADE_TIMER_LEVEL[getHitGrade(elapsedMs).id]
 const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
 
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
-const buildQueue = (existing, unlockStep, pitchDirs) => {
+// melonRef: 남은 수박 수 — 있으면 새로 채우는 공을 수박으로 (대기열 뒤에서 들어옴)
+const buildQueue = (existing, unlockStep, pitchDirs, melonRef) => {
   const ids = getActivePitches(unlockStep, pitchDirs).map((p) => p.id)
   const result = [...existing]
   while (result.length < QUEUE_SIZE) {
     const id = ids[Math.floor(Math.random() * ids.length)]
-    result.push({ ...PITCHES[id], uid: nextBallUid() })
+    const ball = { ...PITCHES[id], uid: nextBallUid() }
+    if (melonRef?.current > 0) {
+      ball.watermelon = true
+      melonRef.current -= 1
+    }
+    result.push(ball)
   }
   return result
 }
@@ -98,7 +105,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const timerBarRef = useRef(null)  // 바 너비는 매 프레임 DOM 직접 갱신 (리렌더 없이)
   const timerStart = useRef(null)
   const feverTimer = useRef(null)
-  const judgeLocked = useRef(false)  // 공 처리 중 중복 입력 방지
   const handleTimeoutRef = useRef(() => { })
   const swingTimeout = useRef(null)
   const feverActiveRef = useRef(false)
@@ -117,6 +123,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const gaugeRef = useRef(null)           // 게이지는 매 프레임 DOM 직접 갱신 (리렌더 없이)
   const gaugeFillRef = useRef(null)
   const gaugeRaf = useRef(null)
+
+  // ── 수박 차지 (0~CYCLE_CHARGE_MAX) — 가득 차면 다음 공 몇 개가 수박 ──
+  const cycleChargeRef = useRef(0)
+  const melonPendingRef = useRef(0)       // 아직 대기열에 안 들어온 수박 수
+  const melonActiveRef = useRef(false)    // 수박 차지 가득 ~ 마지막 수박 처리까지 (차지 멈춤)
+  const melonGaugeRef = useRef(null)
+  const melonGaugeFillRef = useRef(null)
 
   // ── 일시정지 ──
   const pausedRef = useRef(false)
@@ -205,6 +218,23 @@ export default function GameScreen({ onGameOver, onQuit }) {
     timerRaf.current = requestAnimationFrame(tick)
   }, [])
 
+  // ── 수박 — 차지 가득이면 다음 공들을 수박으로, 다 처리되면 차지 초기화 ──
+  const startWatermelons = useCallback(() => {
+    melonActiveRef.current = true
+    melonPendingRef.current = WATERMELON_MIN + Math.floor(Math.random() * (WATERMELON_MAX - WATERMELON_MIN + 1))
+    setTimeout(() => {
+      showPop('WATERMELON!', 'melon')
+      playSfx('newBall')
+    }, 300)
+  }, [showPop])
+
+  const checkMelonEnd = (nextQueue) => {
+    if (melonActiveRef.current && melonPendingRef.current === 0 && !nextQueue.some((b) => b.watermelon)) {
+      melonActiveRef.current = false
+      cycleChargeRef.current = 0
+    }
+  }
+
   // ── 피버 종료 — 이번 피버 연타 점수를 한 번에 합산 ──
   const endFever = useCallback(() => {
     clearInterval(feverTimer.current)
@@ -290,7 +320,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (feverActiveRef.current) return
     const { outs: curOuts, queue: curQueue, unlockStep: curUnlockStep, pitchDirs: curPitchDirs } = stateRef.current
     setCombo(0)
-    chargeRef.current = 0
+    chargeRef.current /= 2
+    if (!melonActiveRef.current) cycleChargeRef.current = 0
     showPop('TIME UP!', 'bad')
     haptic('error')
     playSfx('crowdDisappointment')  // 스윙 없이 아웃 — 관중 탄식만
@@ -302,8 +333,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
     }
     // 맨 앞 공은 타자 옆을 지나가고, 제거 후 보충
     if (curQueue.length > 0) setFlyBalls((balls) => [...balls, { kind: 'take', dir: null, pitch: curQueue[0] }])
-    const next = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs)
+    const next = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
     setQueue(next)
+    stateRef.current = { ...stateRef.current, combo: 0, outs: newOuts, queue: next }
+    checkMelonEnd(next)
     startTimer()
   }, [showPop, startTimer, handleGameOver])
 
@@ -318,7 +351,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       feverTaps: curTaps, feverRoundTaps: curRoundTaps,
       unlockStep: curUnlockStep, pitchDirs: curPitchDirs, outs: curOuts } = stateRef.current
 
-    if (pausedRef.current) return
+    if (pausedRef.current || endedRef.current) return
 
     // 피버 중 — 좌우 구분 없이 연타, 공은 일반처럼 날아감 (아웃 없음, 점수는 피버 종료 시 합산)
     if (isFever) {
@@ -336,15 +369,34 @@ export default function GameScreen({ onGameOver, onQuit }) {
         nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs)
         setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: hitBall, variant: randomHitVariant(), fever: true }])
         setQueue(nextQueue)
+        checkMelonEnd(nextQueue)
       }
       // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 즉시 반영
       stateRef.current = { ...stateRef.current, feverTaps: newTaps, feverRoundTaps: newRoundTaps, queue: nextQueue }
       return
     }
 
-    if (judgeLocked.current || curQueue.length === 0) return
-    judgeLocked.current = true
+    if (curQueue.length === 0) return
     cancelAnimationFrame(timerRaf.current)
+
+    // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보·차지·타율 변화 없음)
+    if (curQueue[0].watermelon) {
+      playFeverHitSfx()
+      haptic('tickWeak')
+      triggerSwing(dir)
+      const nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
+      const newScore = curScore + WATERMELON_POINTS
+      setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: curQueue[0], variant: randomHitVariant() }])
+      setQueue(nextQueue)
+      setScore(newScore)
+      showScorePop(`+${WATERMELON_POINTS}`)
+      lastHitAtRef.current = performance.now()  // 수박 치는 동안 피버 차지가 줄지 않게
+      stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore }
+      checkMelonEnd(nextQueue)
+      startTimer()
+      return
+    }
+
 
     const bt = curQueue[0]
     const isCorrect = dir === getPitchDir(bt.id, curPitchDirs)
@@ -354,7 +406,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     // 공 연출 — 정타는 친 방향으로 날아가고, 헛스윙은 몸쪽으로 지나감. 큐에서는 바로 빼서 뒤 공이 앞으로 옴
     setFlyBalls((balls) => [...balls, { kind: isCorrect ? 'hit' : 'miss', dir, pitch: bt, variant: randomHitVariant(), grade: hitGrade?.id }])
-    setQueue(curQueue.slice(1))
 
     // 투수 동작
     setPitcherThrowing(true)
@@ -367,6 +418,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     let nextUnlockStep = curUnlockStep
     let nextPitchDirs = curPitchDirs
+    let patch  // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 stateRef에 즉시 반영할 값
 
     if (isCorrect) {
       playHitSfx()
@@ -384,6 +436,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       setScore(newScore)
       setCorrect(newCorrect)
       setClassified(newClassified)
+      patch = { combo: newCombo, maxCombo: newMax, score: newScore, correct: newCorrect, classified: newClassified }
       showScorePop(`+${pts}`)
       showHitLabel(hitGrade)
       if (isHomeRun) {
@@ -410,11 +463,21 @@ export default function GameScreen({ onGameOver, onQuit }) {
         }
       }
 
+      // 수박 차지 — 파울 제외. 가득 차면 다음 공들이 수박 (피버 중엔 피버 끝나고 들어옴)
+      if (hitGrade.id !== 'foul' && !melonActiveRef.current) {
+        cycleChargeRef.current = Math.min(CYCLE_CHARGE_MAX, cycleChargeRef.current + 1)
+        if (cycleChargeRef.current >= CYCLE_CHARGE_MAX) {
+          if (isUnlocking) cycleChargeRef.current = CYCLE_CHARGE_MAX - FEVER_UNLOCK_DELAY
+          else startWatermelons()
+        }
+      }
+
       if (isUnlocking) {
         nextUnlockStep = reachedStep
         nextPitchDirs = assignDirsForStep(reachedStep, curPitchDirs)
         setUnlockStep(reachedStep)
         setPitchDirs(nextPitchDirs)
+        patch = { ...patch, unlockStep: reachedStep, pitchDirs: nextPitchDirs }
 
         const addedLabels = PITCH_UNLOCK_ORDER.slice(curUnlockStep, reachedStep)
           .map((id) => PITCHES[id].label)
@@ -429,25 +492,27 @@ export default function GameScreen({ onGameOver, onQuit }) {
       playMissSfx()
       haptic('error')
       setCombo(0)
-      chargeRef.current = 0
+      chargeRef.current /= 2
+      if (!melonActiveRef.current) cycleChargeRef.current = 0
       setClassified(newClassified)
       showPop('MISS!', 'bad')
       setOuts(newOuts)
+      patch = { combo: 0, classified: newClassified, outs: newOuts }
       if (newOuts >= 3) {
+        endedRef.current = true  // 게임 오버 연출 중 입력 무시
+        setQueue(curQueue.slice(1))
         setTimeout(() => handleGameOver(), 300)
-        judgeLocked.current = false
         return
       }
     }
 
-    // 200ms 후 대기열 보충 및 다음 공 준비
-    setTimeout(() => {
-      const next = buildQueue(curQueue.slice(1), nextUnlockStep, nextPitchDirs)
-      setQueue(next)
-      judgeLocked.current = false
-      if (!feverActiveRef.current) startTimer()
-    }, 200)
-  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, handleGameOver, startTimer, triggerSwing])
+    // 대기열 보충 + 다음 공 바로 준비 (기다림 없이 연타 가능) — 피버 중·대기 중엔 수박을 들이지 않음
+    const next = buildQueue(curQueue.slice(1), nextUnlockStep, nextPitchDirs,
+      feverActiveRef.current || feverPendingRef.current ? null : melonPendingRef)
+    setQueue(next)
+    stateRef.current = { ...stateRef.current, ...patch, queue: next }
+    startTimer()
+  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, startWatermelons, handleGameOver, startTimer, triggerSwing])
 
   // ── 일시정지 / 재개 ──
   const pauseGame = useCallback(() => {
@@ -460,8 +525,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (feverActiveRef.current) {
       feverRemainingRef.current = Math.max(0, feverEndAtRef.current - now)
       clearInterval(feverTimer.current)
-    } else if (!judgeLocked.current && !feverPendingRef.current) {
-      // 공 처리 중(다음 공 준비 대기)이 아니면 진행 중인 타이머 — 경과 시간 저장
+    } else if (!feverPendingRef.current) {
+      // 피버 시작 대기 중이 아니면 진행 중인 타이머 — 경과 시간 저장
       cancelAnimationFrame(timerRaf.current)
       timerResumeRef.current = now - timerStart.current
     }
@@ -523,6 +588,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   useEffect(() => {
     let last = performance.now()
     let shown = -1
+    let melonShown = -1
     const loop = (now) => {
       const dt = (now - last) / 1000
       last = now
@@ -544,6 +610,18 @@ export default function GameScreen({ onGameOver, onQuit }) {
           shown = ratio
           gaugeFillRef.current.style.transform = `scaleY(${ratio})`
           gaugeRef.current?.classList.toggle('near-full', !feverActiveRef.current && ratio >= 0.8)
+        }
+
+        // 수박 게이지 — 수박 진행 중엔 가득 찬 채로 멈춤
+        if (!melonActiveRef.current && cycleChargeRef.current > 0
+          && now - lastHitAtRef.current > FEVER_CHARGE_DECAY_DELAY_MS) {
+          cycleChargeRef.current = Math.max(0, cycleChargeRef.current - FEVER_CHARGE_DECAY_PER_SEC * dt)
+        }
+        const melonRatio = melonActiveRef.current ? 1 : cycleChargeRef.current / CYCLE_CHARGE_MAX
+        if (melonRatio !== melonShown && melonGaugeFillRef.current) {
+          melonShown = melonRatio
+          melonGaugeFillRef.current.style.transform = `scaleY(${melonRatio})`
+          melonGaugeRef.current?.classList.toggle('near-full', melonRatio >= 0.8)
         }
       }
       gaugeRaf.current = requestAnimationFrame(loop)
@@ -596,13 +674,19 @@ export default function GameScreen({ onGameOver, onQuit }) {
       : swingDir === 'right' ? '/assets/batter_swing_r.png'
         : '/assets/batter_idle.png'
 
+  // 맨 앞이 수박 — 연타 안내
+  const melonFront = !fever && !!queue[0]?.watermelon
+  const rapidTap = fever || melonFront
+
   // 30콤보+/피버엔 땀 흘리는 투수
   const pitcherSweat = fever || combo >= 30
   const pitcherSrc = pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
 
   const renderBall = (pitch, className, size = 'lane', feverBall = false) => {
     // 피버 중엔 레인·타구 공이 불타는 공으로 (좌/우 힌트는 그대로)
-    const img = feverBall ? FEVER_BALL_IMAGE : getPitchBallImage(pitch.id, pitchBallImages)
+    const img = feverBall ? FEVER_BALL_IMAGE
+      : pitch.watermelon ? WATERMELON_IMAGE
+        : getPitchBallImage(pitch.id, pitchBallImages)
     if (img) {
       return (
         <div className={`${className} has-img`}>
@@ -777,8 +861,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
         </div>
         <span className="timer-num">{fever ? `${feverCountdown}s` : timerNum}</span>
         {/* 초는 바 오른쪽, 바 아래는 피버 중엔 연타 안내 / 평소엔 타격 결과 (자리는 항상 확보) */}
-        {fever ? (
-          <div className="fever-sub">마구 눌러요!</div>
+        {rapidTap ? (
+          <div className={`fever-sub${melonFront ? ' melon' : ''}`}>마구 눌러요!</div>
         ) : (
           <div
             key={`hit-${hitLabel.id}`}
@@ -797,7 +881,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           onPointerDown={(e) => { e.preventDefault(); judge('left') }}
           aria-label="Left"
         >
-          {fever && <span className="tap-badge left">TAP!</span>}
+          {rapidTap && <span className="tap-badge left">TAP!</span>}
           <span className="dir-arrow left" />
         </button>
         <div className={`batter-slot${fever ? ' fever-active' : ''}`}>
@@ -805,11 +889,17 @@ export default function GameScreen({ onGameOver, onQuit }) {
             {swingDir && <div key={swingId} className={`swing-trail ${swingDir}`} />}
             <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
           </div>
-          {/* 피버 차지 게이지 — 채움은 gauge 루프에서 DOM 직접 갱신 */}
-          <div ref={gaugeRef} className="fever-gauge" aria-hidden="true">
+          {/* 차지 게이지 — 왼쪽 피버, 오른쪽 수박 (채움은 gauge 루프에서 DOM 직접 갱신) */}
+          <div ref={gaugeRef} className="fever-gauge power" aria-hidden="true">
             <span className="fever-gauge-label">FVR</span>
             <div className="fever-gauge-track">
               <div ref={gaugeFillRef} className="fever-gauge-fill" />
+            </div>
+          </div>
+          <div ref={melonGaugeRef} className="fever-gauge melon" aria-hidden="true">
+            <img className="melon-gauge-icon" src={WATERMELON_IMAGE} alt="" draggable={false} />
+            <div className="fever-gauge-track">
+              <div ref={melonGaugeFillRef} className="fever-gauge-fill" />
             </div>
           </div>
         </div>
@@ -818,7 +908,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           onPointerDown={(e) => { e.preventDefault(); judge('right') }}
           aria-label="Right"
         >
-          {fever && <span className="tap-badge right">TAP!</span>}
+          {rapidTap && <span className="tap-badge right">TAP!</span>}
           <span className="dir-arrow right" />
         </button>
       </div>
