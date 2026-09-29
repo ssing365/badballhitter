@@ -128,8 +128,8 @@ export const FEVER_CHARGE_MAX = 40
 
 // 수박 차지 — 파울 제외 정타 1회당 1씩 참, MAX 도달 시 다음 공 WATERMELON_MIN~MAX개가 수박 (아웃 시 0)
 export const CYCLE_CHARGE_MAX = 15
-export const WATERMELON_MIN = 8
-export const WATERMELON_MAX = 11
+export const WATERMELON_MIN = 15
+export const WATERMELON_MAX = 20
 export const WATERMELON_POINTS = 100
 export const WATERMELON_IMAGE = '/assets/balls/watermelon.png'
 // 마지막 정타 후 이 시간이 지나면 차지가 서서히 줄어듦 (초당 DECAY_PER_SEC hit)

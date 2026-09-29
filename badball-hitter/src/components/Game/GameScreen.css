@@ -368,24 +368,33 @@
   
   /* ── 공 레인 ── */
   /* 바닥은 타이머(bottom 25%) 위 — 48px는 피버 때 커지는 타이머(바 16px + 숫자 18px + 간격) 높이 */
+  /* 투수(z 20) 위 — 뒤쪽 공이 투수에 가려지지 않게 (뒤쪽은 반투명) */
   .ball-lane {
     position: absolute;
     top: 13%; bottom: calc(25% + 48px);
     left: 50%; transform: translateX(-50%);
     width: 54px;
-    z-index: 10;
+    z-index: 22;
   }
   
   /* ── 공 아이템 ── */
   .ball-item-wrap {
     position: absolute;
     left: 50%;
+    opacity: var(--ball-opacity, 1);
     transform: translateX(-50%) scale(var(--ball-scale, 1));
     transform-origin: center bottom;
     transition: bottom 0.16s ease, transform 0.2s ease-out, opacity 0.2s ease-out;
   }
 
   /* 쳐야 할 공 — 은은한 흰 테두리 빛 */
+  /* 새 공 — 자기 자리의 살짝 옆(힌트 방향 쪽)에서 작게 나타나며 들어옴 (translate·scale 개별 속성이라 transform과 안 겹침) */
+  .ball-lane .ball-item-wrap { animation: ball-spawn 0.24s ease-out backwards; }
+
+  @keyframes ball-spawn {
+    from { translate: var(--spawn-x) 0; scale: 0.5; opacity: 0; }
+  }
+
   .ball-item-wrap.depth-0 .ball-item {
     filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
   }
@@ -1280,7 +1289,8 @@
     .swing-trail,
     .batter-wrap.charging,
     .timer-bar.power-ready,
-    .game-screen.grand-slam { animation: none !important; }
+    .game-screen.grand-slam,
+    .ball-lane .ball-item-wrap { animation: none !important; }
     .swing-trail { display: none !important; }
     .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }
     .scene-fever .dir-btn,

@@ -24,10 +24,14 @@ import './GameScreen.css'
 
 // 공 대기열 레이아웃 — 레인 바닥 기준, 맨 앞(index 0)이 쳐야 할 공이라 크게, 뒤로 갈수록 작게 겹침
 // (bottom 기준이라 앞 공이 커져도 위로 자라서 아래 타이머와 겹치지 않음)
-const ballLaneLayout = (index) => ({
+// spawnDir: 새 공이 살짝 들어오는 쪽 ('left' | 'right' — 그 구종의 힌트 방향)
+const ballLaneLayout = (index, spawnDir) => ({
   bottom: index === 0 ? '0%' : `${9 + (index - 1) * 5.5}%`,
   zIndex: 24 - index,
   '--ball-scale': index === 0 ? '1.3' : `${1 - index * 0.085}`,
+  // 맨 뒤 2개만 살짝 투명하게 — 투수가 비쳐 보이며 멀리 녹아드는 느낌
+  '--ball-opacity': index < 6 ? 1 : 1 - (index - 5) * 0.12,
+  '--spawn-x': spawnDir === 'left' ? '-10px' : spawnDir === 'right' ? '10px' : '0px',
 })
 
 // 공마다 고유 uid — 렌더 key로 사용 (같은 구종이 연속돼도 공 교체가 보이도록)
@@ -452,7 +456,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (curQueue.length === 0) return
     cancelAnimationFrame(timerRaf.current)
 
-    // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보·차지·타율 변화 없음)
+    // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보·수박 차지·타율 변화 없음)
     if (curQueue[0].watermelon) {
       playFeverHitSfx()
       haptic('tickWeak')
@@ -466,6 +470,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
       lastHitAtRef.current = performance.now()  // 수박 치는 동안 피버 차지가 줄지 않게
       stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore }
       checkMelonEnd(nextQueue)
+      // 수박도 피버 차지 +1 — 가득 차면 피버 (스윙 때 남은 수박은 대기열로 되돌아감)
+      chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
+      if (chargeRef.current >= FEVER_CHARGE_MAX && !feverPendingRef.current) {
+        feverPendingRef.current = true
+        setTimeout(() => startFever(), 200)
+      }
       startTimer()
       return
     }
@@ -844,7 +854,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       style={{ '--hint-offset': i - (list.length - 1) / 2 }}
     >
       <div className="hint-pop">
-        {renderBall(bt, 'hint-ball', 'hint')}
+        {/* 수박 타임엔 힌트 공도 수박 */}
+        {renderBall(melonFront ? { ...bt, watermelon: true } : bt, 'hint-ball', 'hint')}
         <div className="hint-lbl">{bt.label}</div>
       </div>
     </div>
@@ -932,7 +943,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           <div
             key={bt.uid}
             className={`ball-item-wrap depth-${i}`}
-            style={ballLaneLayout(i)}
+            style={ballLaneLayout(i, getPitchDir(bt.id, pitchDirs))}
           >
             {renderBall(bt, 'ball-item', 'lane', fever)}
           </div>
