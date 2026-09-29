@@ -5,7 +5,7 @@ import {
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, toFeverBallImage,
   POWER_FULL_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
-  FEVER_READY_MS, POWER_MIN_HOLD_MS,
+  FEVER_READY_MS, POWER_SWING_MIN, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
 } from '../constants'
@@ -43,10 +43,10 @@ const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
 
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 // melonRef: 남은 수박 수 — 있으면 새로 채우는 공을 수박으로 (대기열 뒤에서 들어옴)
-const buildQueue = (existing, unlockStep, pitchDirs, melonRef) => {
+const buildQueue = (existing, unlockStep, pitchDirs, melonRef, size = QUEUE_SIZE) => {
   const ids = getActivePitches(unlockStep, pitchDirs).map((p) => p.id)
   const result = [...existing]
-  while (result.length < QUEUE_SIZE) {
+  while (result.length < size) {
     const id = ids[Math.floor(Math.random() * ids.length)]
     const ball = { ...PITCHES[id], uid: nextBallUid() }
     if (melonRef?.current > 0) {
@@ -71,6 +71,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [powerPreview, setPowerPreview] = useState(0)   // 이번 파워 스윙에 날아갈 공 수 (충전 중 실시간)
   const [powerCharging, setPowerCharging] = useState(false) // 피버 중 꾹 누르는 중
   const [powerSwinging, setPowerSwinging] = useState(false) // 파워 스윙 후 공이 날아가는 중
+  const [grandSlam, setGrandSlam] = useState(false)       // 파워 절반 이상 스윙 — GRAND SLAM 문구
   const [unlockStep, setUnlockStep] = useState(0)
   const [pitchDirs, setPitchDirs] = useState(() => assignDirsForStep(0))
   const [pitchBallImages] = useState(() => createPitchBallImages())
@@ -147,6 +148,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const powerSwungRef = useRef(false)     // 이번 피버에서 이미 스윙함
   const powerPreviewRef = useRef(0)
   const feverReadyUntilRef = useRef(0)    // 이 시각 전까지 피버 입력 무시 (준비 시간)
+  const refillingRef = useRef(false)      // 파워 스윙 후 대기열 다시 채우는 중 (입력 무시)
   const powerTimeouts = useRef([])
   const endedRef = useRef(false)          // 게임 오버·언마운트 이후 (일시정지·지연 피버 무시)
 
@@ -259,6 +261,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     setPowerCharging(false)
     setPowerSwinging(false)
+    setGrandSlam(false)
     const { score: curScore, powerBalls: curBalls } = stateRef.current
     const pts = balls * POWER_BALL_POINTS
     const newScore = curScore + pts
@@ -267,8 +270,29 @@ export default function GameScreen({ onGameOver, onQuit }) {
     setPowerBalls(newBalls)
     stateRef.current = { ...stateRef.current, score: newScore, powerBalls: newBalls }
     showScorePop(`+${pts.toLocaleString()}`, 'fever')
-    // 피버 종료 후 타이머 재시작
-    setTimeout(() => startTimer(), 300)
+
+    // 투수가 숨 고른 뒤 공을 하나씩 다시 던져 대기열을 채우고, 다 차면 타이머 시작
+    refillingRef.current = true
+    const addBall = () => {
+      if (endedRef.current) return
+      if (pausedRef.current) {
+        powerTimeouts.current.push(setTimeout(addBall, 100))
+        return
+      }
+      const { queue: q, unlockStep: step, pitchDirs: dirs } = stateRef.current
+      const next = buildQueue(q, step, dirs, melonPendingRef, q.length + 1)
+      setQueue(next)
+      stateRef.current = { ...stateRef.current, queue: next }
+      setPitcherThrowing(true)
+      powerTimeouts.current.push(setTimeout(() => setPitcherThrowing(false), QUEUE_REFILL_INTERVAL_MS - 10))
+      if (next.length < QUEUE_SIZE) {
+        powerTimeouts.current.push(setTimeout(addBall, QUEUE_REFILL_INTERVAL_MS))
+      } else {
+        refillingRef.current = false
+        startTimer()
+      }
+    }
+    powerTimeouts.current.push(setTimeout(addBall, PITCHER_REST_MS))
   }, [showScorePop, startTimer])
 
   // 지금 파워 (0~1) — 누른 시간 / POWER_FULL_MS
@@ -280,8 +304,16 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (!feverActiveRef.current || powerSwungRef.current) return
     powerSwungRef.current = true
     clearInterval(feverTimer.current)
-    const count = powerBallCount(currentPower(performance.now()))
+    const power = currentPower(performance.now())
+    const count = powerBallCount(power)
     powerStartRef.current = null
+    if (power >= POWER_SWING_MIN) setGrandSlam(true)
+
+    // 대기열 공은 전부 치워버림 — 남은 수박은 다시 채울 때 들어오도록 되돌림
+    const { queue: curQueue } = stateRef.current
+    melonPendingRef.current += curQueue.filter((b) => b.watermelon).length
+    setQueue([])
+    stateRef.current = { ...stateRef.current, queue: [] }
     powerPreviewRef.current = count
     setPowerPreview(count)
     setPowerCharging(false)
@@ -405,7 +437,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       maxCombo: curMax, classified: curCls, correct: curCrt,
       unlockStep: curUnlockStep, pitchDirs: curPitchDirs, outs: curOuts } = stateRef.current
 
-    if (pausedRef.current || endedRef.current) return
+    if (pausedRef.current || endedRef.current || refillingRef.current) return
 
     // 피버 중 — 누르기 시작하면 파워 충전, 떼면(release) 파워 스윙. 스윙은 한 번뿐
     if (isFever) {
@@ -559,8 +591,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const release = useCallback((dir) => {
     if (pausedRef.current) return
     if (!feverActiveRef.current || powerStartRef.current == null) return
-    // 너무 짧게 눌렀다 떼면 스윙 대신 충전 취소 — 다시 꾹 누르면 됨
-    if (performance.now() - powerStartRef.current < POWER_MIN_HOLD_MS) {
+    // 파워 절반 전에 떼면 스윙 대신 충전 취소 — 다시 꾹 누르면 됨
+    if (currentPower(performance.now()) < POWER_SWING_MIN) {
       powerStartRef.current = null
       setPowerCharging(false)
       return
@@ -656,7 +688,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
           ratio = 0
           if (!powerSwungRef.current) {
             const power = currentPower(now)
-            if (timerBarRef.current) timerBarRef.current.style.transform = `scaleX(${power})`
+            if (timerBarRef.current) {
+              timerBarRef.current.style.transform = `scaleX(${power})`
+              timerBarRef.current.classList.toggle('power-ready', power >= POWER_SWING_MIN)
+            }
             const count = powerBallCount(power)
             if (count !== powerPreviewRef.current) {
               powerPreviewRef.current = count
@@ -816,7 +851,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   )
 
   return (
-    <div className={`game-screen scene-${sceneMood}${paused ? ' paused' : ''}`}>
+    <div className={`game-screen scene-${sceneMood}${paused ? ' paused' : ''}${grandSlam ? ' grand-slam' : ''}`}>
       <Crowd mood={crowdMood} hush={outFlash} />
       <Fielders mood={sceneMood} />
 
@@ -929,6 +964,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
             <div className="timer-bar" ref={timerBarRef} />
           </div>
           {/* 타격 등급 경계 표시 — 바 위 작은 픽셀 화살표, 남은 시간 2.7s(홈런) / 2.1s(2루타) / 0.7s(파울 시작) */}
+          {/* 피버 파워 바 — 절반 지점 표시 (여기부터 떼면 GRAND SLAM) */}
+          {fever && <i className="power-half" style={{ left: `${POWER_SWING_MIN * 100}%` }} aria-hidden="true" />}
           {!fever && (
             <div className="timer-zones" aria-hidden="true">
               <i className="hr" style={{ left: '90%' }} />
@@ -942,8 +979,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
         <span className="timer-num">{fever ? `${feverCountdown}s` : timerNum}</span>
         {/* 초는 바 오른쪽, 바 아래는 피버 중엔 연타 안내 / 평소엔 타격 결과 (자리는 항상 확보) */}
         {rapidTap ? (
-          <div className={`fever-sub${melonFront ? ' melon' : ''}`}>
-            {!fever ? '마구 눌러요!' : powerSwinging ? '따라라락!' : powerCharging ? '떼면 풀스윙!' : '꾹 눌렀다 떼요!'}
+          <div className={`fever-sub${melonFront ? ' melon' : ''}`} style={{ visibility: powerSwinging ? 'hidden' : 'visible' }}>
+            {!fever ? '마구 눌러요!' : powerCharging ? '절반 넘기고 떼요!' : '꾹 눌렀다 떼요!'}
           </div>
         ) : (
           <div
@@ -1016,11 +1053,17 @@ export default function GameScreen({ onGameOver, onQuit }) {
         <>
           <div className="fever-overlay" />
           <div className="fever-ui">
-            <div className="fever-title">
-              <span className="fever-fire">🔥</span>
-              <span className="fever-title-text">FEVER!</span>
-              <span className="fever-fire">🔥</span>
-            </div>
+            {grandSlam ? (
+              <div className="fever-title grand-slam">
+                <span className="fever-title-text">GRAND SLAM</span>
+              </div>
+            ) : (
+              <div className="fever-title">
+                <span className="fever-fire">🔥</span>
+                <span className="fever-title-text">FEVER!</span>
+                <span className="fever-fire">🔥</span>
+              </div>
+            )}
           </div>
         </>
       )}

@@ -680,6 +680,27 @@
     will-change: transform;
   }
 
+  /* 피버 파워 바 — 절반 넘으면 하얗게 번쩍 (GRAND SLAM 가능) */
+  .timer-bar.power-ready { animation: power-ready-flash 0.16s steps(1, end) infinite; }
+
+  @keyframes power-ready-flash {
+    0%  { filter: brightness(1.4) saturate(1.3); }
+    50% { filter: brightness(1); }
+  }
+
+  /* 절반 지점 표시 — 흰 세로 눈금 */
+  .power-half {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 3px;
+    translate: -50% 0;
+    background: #fff;
+    box-shadow: 0 0 0 1px #000, 0 0 6px #fde047;
+    z-index: 1;
+    pointer-events: none;
+  }
+
   /* 1칸 단위 픽셀 눈금 */
   .timer-track::after {
     content: '';
@@ -1257,7 +1278,9 @@
     .timer-track,
     .score-pop,
     .swing-trail,
-    .batter-wrap.charging { animation: none !important; }
+    .batter-wrap.charging,
+    .timer-bar.power-ready,
+    .game-screen.grand-slam { animation: none !important; }
     .swing-trail { display: none !important; }
     .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }
     .scene-fever .dir-btn,
@@ -1324,6 +1347,33 @@
   }
   .fever-title-text::before { top: -12px; left: -6px; }
   .fever-title-text::after { bottom: -10px; right: -8px; animation-delay: -0.3s; }
+
+  /* GRAND SLAM — 크게 쾅 내려찍히며 등장, 붉은 금빛 + 화면 흔들림 */
+  .fever-title.grand-slam {
+    white-space: nowrap;
+    animation: grand-slam-in 0.4s ease-out, fever-title-pulse 0.3s steps(1, end) 0.4s infinite;
+  }
+  .grand-slam .fever-title-text {
+    background-image: linear-gradient(100deg,
+      #dc2626 0 25%, #f97316 35%, #fde047 45%, #fff 50%, #fde047 55%, #f97316 65%, #dc2626 75% 100%);
+    filter:
+      drop-shadow(3px 0 0 #000) drop-shadow(-3px 0 0 #000)
+      drop-shadow(0 3px 0 #000) drop-shadow(0 -3px 0 #000)
+      drop-shadow(0 0 8px rgba(253, 224, 71, 1)) drop-shadow(0 0 20px rgba(220, 38, 38, 0.9));
+    animation-duration: 0.6s;
+  }
+  @container (max-width: 360px) {
+    .fever-title.grand-slam { font-size: 24px; }
+  }
+
+  @keyframes grand-slam-in {
+    0%   { transform: scale(3); opacity: 0; }
+    50%  { transform: scale(0.9); opacity: 1; }
+    75%  { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  .game-screen.grand-slam { animation: screen-shake 0.35s steps(1, end); }
 
   @keyframes fever-title-pop {
     0%   { transform: scale(0.3); }

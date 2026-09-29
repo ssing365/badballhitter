@@ -149,10 +149,13 @@ export const POWER_BALLS_MAX = 15
 export const POWER_BALL_INTERVAL_MS = 60
 // 피버 시작 후 입력을 무시하는 준비 시간 — 연타하던 손이 바로 스윙해버리지 않게 (충전 시간 4초와 별도)
 export const FEVER_READY_MS = 800
-// 이보다 짧게 눌렀다 떼면 스윙하지 않고 충전 취소 (연타 관성 방지)
-export const POWER_MIN_HOLD_MS = 250
+// 파워 스윙 후 투수가 숨 고르는 시간, 이후 공을 하나씩 다시 던져 대기열을 채우는 간격
+export const PITCHER_REST_MS = 700
+export const QUEUE_REFILL_INTERVAL_MS = 80
+// 파워 절반(POWER_SWING_MIN) 이상에서 떼야 GRAND SLAM 스윙 — 절반~가득이 MIN~MAX개 (시간 초과 자동 스윙은 절반 미만이면 MIN개)
+export const POWER_SWING_MIN = 0.5
 export const powerBallCount = (power) =>
-  POWER_BALLS_MIN + Math.round(power * (POWER_BALLS_MAX - POWER_BALLS_MIN))
+  POWER_BALLS_MIN + Math.round(Math.max(0, (power - POWER_SWING_MIN) / (1 - POWER_SWING_MIN)) * (POWER_BALLS_MAX - POWER_BALLS_MIN))
 
 // 게임 종료 시 해금 단계(표시 구종 수) 기준 등급
 export const GRADES = [
