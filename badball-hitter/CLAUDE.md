@@ -28,7 +28,8 @@ badball-hitter/
 │   │   └── balls/
 │   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
-│   │       └── feverball.png     # (미사용)
+│   │       ├── feverball.png     # (미사용)
+│   │       └── old_feverball.png # 피버 공 (원본 assets-src/balls/, 공 본체 정중앙으로 잘라 320px)
 │   └── sounds/
 │       ├── Pinball Spring.mp3        # BGM normal (타이틀/결과)
 │       ├── Pinball Spring 160.mp3    # BGM fast (게임 플레이)
@@ -89,6 +90,8 @@ badball-hitter/
 ### 공 이미지
 - 전 구종 이미지 사용 (`IMAGE_PITCH_IDS`)
 - fastball = `white.png` 고정, 나머지 5개는 `COLOR_BALL_FILES` 셔플 배정 (`createPitchBallImages`, 게임마다)
+- 피버 중에는 레인·타구 공이 전부 불타는 공(`FEVER_BALL_IMAGE`, `.ball-sprite.lane.fever` 96px + 음수 margin) — 레인은 꼬리가 위로 -45°, 친 공은 꼬리가 날아가는 반대쪽. 맨 앞 공 글로우는 흰빛 대신 주황빛. 좌/우 힌트 공은 그대로
+- 피버 공 이미지는 공 본체가 정중앙이 되게 잘라둠 (원본 `assets-src/balls/old_feverball.png`, 320px)
 - 이미지가 없으면 color + text 원형으로 렌더 (폴백)
 
 ### 점수 공식
@@ -226,7 +229,6 @@ scores (id uuid, nickname text, team_id text, score int,
 
 ## 구현 예정
 - 팀 선택/닉네임 화면 (TeamSelect 재작성 — 영어 UI, TEAMS 상수 추가)
-- 피버 타임: 공이 전부 불타는 공(`balls/feverball.png`)으로 교체
 - 효과음 (스윙/포구 — `public/sounds/`에 파일만 있음)
 - 투수 표정이 콤보에 따라 변화 (10콤보: 당황, 20콤보: 분노)
 - 데일리 챌린지 (매일 고정 시퀀스, 전국 동일 패턴)

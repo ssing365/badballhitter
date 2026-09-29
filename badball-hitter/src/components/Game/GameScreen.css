@@ -520,6 +520,23 @@
     height: 48px;
   }
 
+  /* ── 피버 공 — 이미지 정중앙이 공 본체라 불꽃까지 들어가게 크게 그리고 음수 margin으로 중심 유지 ── */
+  .ball-sprite.lane.fever {
+    width: 96px;
+    height: 96px;
+    margin: -24px;
+    max-width: none;
+    rotate: -45deg;           /* 꼬리가 위(투수 쪽)를 향하게 — 타자 쪽으로 내려오는 느낌 */
+  }
+  /* 친 공은 꼬리가 날아가는 반대쪽을 향하게 */
+  .fly-hit-left .ball-sprite.fever { rotate: 90deg; }
+  .fly-hit-right .ball-sprite.fever { rotate: 180deg; }
+
+  /* 맨 앞 공 글로우 — 피버 땐 흰빛 대신 주황빛 */
+  .ball-lane.fever .ball-item-wrap.depth-0 .ball-item {
+    filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.8)) drop-shadow(0 0 10px rgba(249, 115, 22, 0.7));
+  }
+
   .ball-sprite.hint {
     width: 48px;
     height: 48px;

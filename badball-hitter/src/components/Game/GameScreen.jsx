@@ -3,7 +3,7 @@ import {
   QUEUE_SIZE, TIMER_MAX,
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
-  FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage,
+  FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, FEVER_BALL_IMAGE,
   FEVER_TAP_POINTS, getHitGrade,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
 } from '../constants'
@@ -334,7 +334,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       if (curQueue.length > 0) {
         const hitBall = curQueue[0]
         nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs)
-        setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: hitBall, variant: randomHitVariant() }])
+        setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: hitBall, variant: randomHitVariant(), fever: true }])
         setQueue(nextQueue)
       }
       // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 즉시 반영
@@ -600,12 +600,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const pitcherSweat = fever || combo >= 30
   const pitcherSrc = pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
 
-  const renderBall = (pitch, className, size = 'lane') => {
-    const img = getPitchBallImage(pitch.id, pitchBallImages)
+  const renderBall = (pitch, className, size = 'lane', feverBall = false) => {
+    // 피버 중엔 레인·타구 공이 불타는 공으로 (좌/우 힌트는 그대로)
+    const img = feverBall ? FEVER_BALL_IMAGE : getPitchBallImage(pitch.id, pitchBallImages)
     if (img) {
       return (
         <div className={`${className} has-img`}>
-          <img src={img} className={`ball-sprite ${size}`} alt="" draggable={false} />
+          <img src={img} className={`ball-sprite ${size}${feverBall ? ' fever' : ''}`} alt="" draggable={false} />
         </div>
       )
     }
@@ -726,15 +727,15 @@ export default function GameScreen({ onGameOver, onQuit }) {
         </div>
       </div>
 
-      {/* 공 레인 */}
-      <div className="ball-lane">
+      {/* 공 레인 — 피버 중엔 전부 불타는 공 */}
+      <div className={`ball-lane${fever ? ' fever' : ''}`}>
         {queue.map((bt, i) => (
           <div
             key={bt.uid}
             className={`ball-item-wrap depth-${i}`}
             style={ballLaneLayout(i)}
           >
-            {renderBall(bt, 'ball-item', 'lane')}
+            {renderBall(bt, 'ball-item', 'lane', fever)}
           </div>
         ))}
       </div>
@@ -748,7 +749,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
             style={ballLaneLayout(0)}
             onAnimationEnd={() => setFlyBalls((balls) => balls.filter((b) => b !== fb))}
           >
-            {renderBall(fb.pitch, 'ball-item', 'lane')}
+            {renderBall(fb.pitch, 'ball-item', 'lane', fb.fever)}
           </div>
         ))}
       </div>

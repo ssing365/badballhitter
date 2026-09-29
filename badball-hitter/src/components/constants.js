@@ -29,6 +29,9 @@ export const createPitchBallImages = () => {
   return images
 }
 
+// 피버 중 레인·타구 공 (공 본체가 이미지 정중앙, 꼬리는 오른쪽 위)
+export const FEVER_BALL_IMAGE = '/assets/balls/old_feverball.png'
+
 export const getPitchBallImage = (pitchId, pitchBallImages) =>
   pitchBallImages[pitchId] ?? null
 
