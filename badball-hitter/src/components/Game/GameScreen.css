@@ -174,7 +174,7 @@
     animation: combo-fire 0.6s steps(3) infinite;
   }
 
-  /* 피버 연타 수 — 금색 큰 숫자 */
+  /* 피버 파워 % — 금색 큰 숫자 */
   .fever-taps { top: 45%; z-index: 37; }
   .fever-taps .center-label { color: #fde047; font-size: 8px; }
   .fever-taps .center-num {
@@ -395,6 +395,13 @@
     from { translate: var(--spawn-x) 0; scale: 0.5; opacity: 0; }
   }
 
+  /* 투수가 던진 공 — 투수 손 위치(레인 높이 절반쯤)에서 작게 출발해 자기 칸까지 일자로 날아옴 */
+  .ball-lane .ball-item-wrap.from-pitcher { animation: pitch-in 0.2s ease-in backwards; }
+
+  @keyframes pitch-in {
+    from { bottom: 50%; scale: 0.35; }
+  }
+
   .ball-item-wrap.depth-0 .ball-item {
     filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
   }
@@ -537,6 +544,18 @@
     max-width: none;
   }
 
+  /* 피버 준비 — 일반 공 위에 금테 공이 겹쳐 서서히 나타남 (뒤쪽 공부터 --gold-delay 차례로) */
+  .ball-item.has-img { position: relative; }
+  .ball-sprite.gold-in {
+    position: absolute;
+    top: 0; left: 0;
+    animation: gold-in 0.25s ease-out var(--gold-delay, 0ms) backwards;
+  }
+
+  @keyframes gold-in {
+    from { opacity: 0; scale: 0.8; filter: brightness(2); }
+  }
+
   /* 맨 앞 공 글로우 — 피버 땐 흰빛 대신 금빛 */
   .ball-lane.fever .ball-item-wrap.depth-0 .ball-item {
     filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.9)) drop-shadow(0 0 10px rgba(250, 204, 21, 0.6));
@@ -657,10 +676,10 @@
 
   .timer-wrap.danger .timer-track { animation: gauge-glow-danger 0.3s steps(1, end) infinite; }
 
-  /* 피버 — 더 굵고 불꽃색, 남은 시간 크게 */
+  /* 피버 — 나무 방망이 바, 남은 시간 크게 */
   .timer-wrap.fever {
-    --timer-fill: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #fde047 100%);
-    --timer-glow: #f97316;
+    --timer-fill: linear-gradient(0deg, #7c3f16 0 22%, #c98a4b 22% 60%, #f0c690 60% 78%, #c98a4b 78% 100%);
+    --timer-glow: #f59e0b;
     --timer-num: #fde047;
     z-index: 37;
   }
@@ -682,9 +701,24 @@
     overflow: hidden;
   }
 
-  .timer-wrap.fever .timer-track {
-    height: 16px;
-    animation: gauge-glow 0.3s steps(1, end) infinite;
+  /* 방망이 실루엣 — 손잡이 끝(노브) → 가는 손잡이 → 굵은 배럴. 외곽선·글로우는 clip-path에 안 잘리게 부모 drop-shadow */
+  .timer-track.bat {
+    height: 20px;
+    border: none;
+    box-shadow: none;
+    background: #3b2412;
+    clip-path: polygon(
+      0 18%, 4% 18%, 4% 36%, 34% 36%, 68% 6%, 96% 6%, 100% 20%,
+      100% 80%, 96% 94%, 68% 94%, 34% 64%, 4% 64%, 4% 82%, 0 82%
+    );
+  }
+  .timer-track.bat::after { display: none; }
+
+  .timer-wrap.fever .timer-bar-area {
+    filter:
+      drop-shadow(2px 0 0 #111) drop-shadow(-2px 0 0 #111)
+      drop-shadow(0 2px 0 #111) drop-shadow(0 -2px 0 #111)
+      drop-shadow(0 0 6px var(--timer-glow));
   }
 
   .timer-wrap.melon .timer-track { animation: melon-gauge-glow 0.3s steps(1, end) infinite; }
@@ -701,27 +735,6 @@
     background: var(--timer-fill);
     transform-origin: left center;
     will-change: transform;
-  }
-
-  /* 피버 파워 바 — 절반 넘으면 하얗게 번쩍 (GRAND SLAM 가능) */
-  .timer-bar.power-ready { animation: power-ready-flash 0.16s steps(1, end) infinite; }
-
-  @keyframes power-ready-flash {
-    0%  { filter: brightness(1.4) saturate(1.3); }
-    50% { filter: brightness(1); }
-  }
-
-  /* 절반 지점 표시 — 흰 세로 눈금 */
-  .power-half {
-    position: absolute;
-    top: -4px;
-    bottom: -4px;
-    width: 3px;
-    translate: -50% 0;
-    background: #fff;
-    box-shadow: 0 0 0 1px #000, 0 0 6px #fde047;
-    z-index: 1;
-    pointer-events: none;
   }
 
   /* 1칸 단위 픽셀 눈금 */
@@ -1036,8 +1049,32 @@
       var(--btn-shade),
       0 var(--btn-depth) 0 var(--btn-edge),
       0 calc(var(--btn-depth) + 4px) 8px rgba(0,0,0,0.45);
-    transition: transform 0.06s, box-shadow 0.06s, filter 0.06s;
+    transition: transform 0.06s, box-shadow 0.06s, filter 0.06s,
+      width 0.2s ease-out, height 0.2s ease-out, border-radius 0.2s ease-out;
   }
+
+  /* 피버 — 동그란 버튼, 방망이 바와 같은 파워만큼 아래에서부터 금색으로 차오름 */
+  .dir-btn.round {
+    width: 66px; height: 66px;
+    border-radius: 50%;
+  }
+
+  .btn-fill {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .btn-fill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #fff7cc 0%, #fde047 30%, #f59e0b 100%);
+    transform: scaleY(var(--power, 0.2));
+    transform-origin: bottom center;
+  }
+  .dir-btn .dir-arrow { position: relative; }
 
   .dir-btn:active,
   .dir-btn.pressed {
@@ -1071,10 +1108,10 @@
   .dir-arrow.left  { transform: scaleX(-1) translateX(2px); }
   .dir-arrow.right { transform: translateX(2px); }
 
-  /* 상황별 버튼 색 */
+  /* 상황별 버튼 색 — 피버는 어두운 나무 바탕에 금색이 차오름 */
   .scene-fever .dir-btn {
-    --btn-face: #b45309;
-    --btn-face-hi: #facc15;
+    --btn-face: #3b2412;
+    --btn-face-hi: #6b3f1d;
     --btn-edge: #78350f;
     --btn-rim: #fff7cc;
     --btn-shade: 0 0 transparent;
@@ -1243,6 +1280,18 @@
     50% { transform: rotate(5deg); }
   }
 
+  /* 피버 내내 — 배경만 살짝 어둡게 (투수 z 20·공 레인·타자·버튼·방망이 바는 위) */
+  .fever-dim {
+    position: absolute;
+    inset: 0;
+    z-index: 19;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+  .fever-dim.on { opacity: 1; transition-duration: 0.15s; }
+
   /* ── 아웃 직후 ── */
   .game-screen.scene-out { animation: screen-shake 0.3s steps(1, end); }
 
@@ -1283,7 +1332,7 @@
     .score-pop,
     .swing-trail,
     .batter-wrap.charging,
-    .timer-bar.power-ready,
+    .ball-sprite.gold-in,
     .game-screen.grand-slam,
     .ball-lane .ball-item-wrap { animation: none !important; }
     .swing-trail { display: none !important; }
@@ -1322,6 +1371,16 @@
   }
 
   .fever-fire { font-size: 26px; }
+
+  /* READY... — 조용히 깜빡이며 대기 */
+  .fever-title.ready {
+    animation: fever-title-pop 0.35s ease-out, ready-blink 0.4s steps(1, end) 0.35s infinite;
+  }
+
+  @keyframes ready-blink {
+    0%  { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
 
   /* 금빛 글씨 + 흰 빛줄기가 스쳐 지나감. 글씨가 투명 채움이라 외곽선·글로우는 text-shadow 대신 drop-shadow */
   .fever-title-text {

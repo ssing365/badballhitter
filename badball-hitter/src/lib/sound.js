@@ -212,6 +212,7 @@ const sfx = {
   fever: createSfx('fevertime.wav', 0.7),
   feverCrowd: createSfx('crowd-cheering.wav', 0.6),
   scoreboard: createSfx('scoreboard.wav', 0.7),
+  scoreboardSoft: createSfx('scoreboard.wav', 0.3), // 피버 준비(READY) — 작게
   stamp: createSfx('stamp.mp3', 0.8),
   fanfare: createSfx('fanfare.mp3', 0.8),
   newBall: createSfx('new-ball.wav', 0.7),

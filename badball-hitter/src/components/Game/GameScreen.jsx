@@ -4,8 +4,8 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, toFeverBallImage,
-  POWER_FULL_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
-  FEVER_READY_MS, POWER_SWING_MIN, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
+  POWER_FULL_MS, POWER_MIN, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
+  FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
 } from '../constants'
@@ -47,12 +47,13 @@ const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
 
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 // melonRef: 남은 수박 수 — 있으면 새로 채우는 공을 수박으로 (대기열 뒤에서 들어옴)
-const buildQueue = (existing, unlockStep, pitchDirs, melonRef, size = QUEUE_SIZE) => {
+// fromPitcher: 투수가 던져서 자기 칸까지 날아오는 공 (게임 시작·그랜드슬램 후 채우기)
+const buildQueue = (existing, unlockStep, pitchDirs, melonRef, size = QUEUE_SIZE, fromPitcher = false) => {
   const ids = getActivePitches(unlockStep, pitchDirs).map((p) => p.id)
   const result = [...existing]
   while (result.length < size) {
     const id = ids[Math.floor(Math.random() * ids.length)]
-    const ball = { ...PITCHES[id], uid: nextBallUid() }
+    const ball = { ...PITCHES[id], uid: nextBallUid(), fromPitcher }
     if (melonRef?.current > 0) {
       ball.watermelon = true
       melonRef.current -= 1
@@ -72,10 +73,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const [correct, setCorrect] = useState(0)
   const [powerBalls, setPowerBalls] = useState(0)        // 게임 전체 파워 스윙으로 날린 공 수 (결과 화면용)
   const [homeRuns, setHomeRuns] = useState(0)            // 홈런 수 (결과 화면용)
-  const [powerPreview, setPowerPreview] = useState(0)   // 이번 파워 스윙에 날아갈 공 수 (충전 중 실시간)
+  const [powerPct, setPowerPct] = useState(Math.round(POWER_MIN * 100)) // 파워 % (충전 중 실시간, 중앙 표시)
+  const [feverReady, setFeverReady] = useState(false)     // 피버 시작 후 준비 시간 (입력 무시, READY...)
   const [powerCharging, setPowerCharging] = useState(false) // 피버 중 꾹 누르는 중
   const [powerSwinging, setPowerSwinging] = useState(false) // 파워 스윙 후 공이 날아가는 중
-  const [grandSlam, setGrandSlam] = useState(false)       // 파워 절반 이상 스윙 — GRAND SLAM 문구
+  const [grandSlam, setGrandSlam] = useState(false)       // 파워 스윙 — GRAND SLAM 문구 (피버 끝나도 잠깐 유지)
   const [unlockStep, setUnlockStep] = useState(0)
   const [pitchDirs, setPitchDirs] = useState(() => assignDirsForStep(0))
   const [pitchBallImages] = useState(() => createPitchBallImages())
@@ -114,6 +116,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const timerStart = useRef(null)
   const feverTimer = useRef(null)
   const handleTimeoutRef = useRef(() => { })
+  const screenRef = useRef(null)    // 파워(--power)를 방망이 바·버튼 채움에 같이 쓰도록 DOM 직접 갱신
   const swingTimeout = useRef(null)
   const feverActiveRef = useRef(false)
   const popTimeout = useRef(null)
@@ -148,8 +151,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
   // ── 파워 스윙 (피버) ──
   const powerStartRef = useRef(null)      // 누르기 시작한 시각 (null = 안 누르는 중)
   const powerSwungRef = useRef(false)     // 이번 피버에서 이미 스윙함
-  const powerPreviewRef = useRef(0)
+  const powerPctRef = useRef(0)
+  const feverReadyRef = useRef(false)     // 준비 시간 중 (끝나는 순간 누르고 있으면 충전 시작)
   const feverReadyUntilRef = useRef(0)    // 이 시각 전까지 피버 입력 무시 (준비 시간)
+  const heldInputsRef = useRef(new Set()) // 지금 누르고 있는 방향 입력 (포인터 id / 키) — 준비 중에도 기록
+  const lastDirRef = useRef('right')      // 마지막으로 누른 방향 (가득 차서 자동 스윙할 때)
+  const powerSwingRef = useRef(() => { })
+  const grandSlamTimeout = useRef(null)
   const refillingRef = useRef(false)      // 파워 스윙 후 대기열 다시 채우는 중 (입력 무시)
   const powerTimeouts = useRef([])
   const endedRef = useRef(false)          // 게임 오버·언마운트 이후 (일시정지·지연 피버 무시)
@@ -263,7 +271,32 @@ export default function GameScreen({ onGameOver, onQuit }) {
     stateRef.current = { ...stateRef.current, queue: next }
   }
 
-  // ── 피버 종료 — 파워 스윙으로 날린 공 점수를 한 번에 합산 ──
+  // ── 투수가 공을 하나씩 던져 대기열을 채우고, 다 차면 타이머 시작 (게임 시작·그랜드슬램 후) ──
+  const refillQueue = useCallback((delayMs) => {
+    refillingRef.current = true
+    const addBall = () => {
+      if (endedRef.current) return
+      if (pausedRef.current) {
+        powerTimeouts.current.push(setTimeout(addBall, 100))
+        return
+      }
+      const { queue: q, unlockStep: step, pitchDirs: dirs } = stateRef.current
+      const next = buildQueue(q, step, dirs, melonPendingRef, q.length + 1, true)
+      setQueue(next)
+      stateRef.current = { ...stateRef.current, queue: next }
+      setPitcherThrowing(true)
+      powerTimeouts.current.push(setTimeout(() => setPitcherThrowing(false), QUEUE_REFILL_INTERVAL_MS - 10))
+      if (next.length < QUEUE_SIZE) {
+        powerTimeouts.current.push(setTimeout(addBall, QUEUE_REFILL_INTERVAL_MS))
+      } else {
+        refillingRef.current = false
+        startTimer()
+      }
+    }
+    powerTimeouts.current.push(setTimeout(addBall, delayMs))
+  }, [startTimer])
+
+  // ── 피버 종료 — 파워 스윙으로 날린 공 점수를 한 번에 합산 (마지막 공이 발사되는 순간) ──
   const endFever = useCallback((balls) => {
     clearInterval(feverTimer.current)
     feverActiveRef.current = false
@@ -276,7 +309,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     setPowerCharging(false)
     setPowerSwinging(false)
-    setGrandSlam(false)
     const { score: curScore, powerBalls: curBalls } = stateRef.current
     const pts = balls * POWER_BALL_POINTS
     const newScore = curScore + pts
@@ -286,33 +318,21 @@ export default function GameScreen({ onGameOver, onQuit }) {
     stateRef.current = { ...stateRef.current, score: newScore, powerBalls: newBalls }
     showScorePop(`+${pts.toLocaleString()}`, 'fever')
 
-    // 투수가 숨 고른 뒤 공을 하나씩 다시 던져 대기열을 채우고, 다 차면 타이머 시작
-    refillingRef.current = true
-    const addBall = () => {
-      if (endedRef.current) return
-      if (pausedRef.current) {
-        powerTimeouts.current.push(setTimeout(addBall, 100))
-        return
-      }
-      const { queue: q, unlockStep: step, pitchDirs: dirs } = stateRef.current
-      const next = buildQueue(q, step, dirs, melonPendingRef, q.length + 1)
-      setQueue(next)
-      stateRef.current = { ...stateRef.current, queue: next }
-      setPitcherThrowing(true)
-      powerTimeouts.current.push(setTimeout(() => setPitcherThrowing(false), QUEUE_REFILL_INTERVAL_MS - 10))
-      if (next.length < QUEUE_SIZE) {
-        powerTimeouts.current.push(setTimeout(addBall, QUEUE_REFILL_INTERVAL_MS))
-      } else {
-        refillingRef.current = false
-        startTimer()
-      }
-    }
-    powerTimeouts.current.push(setTimeout(addBall, PITCHER_REST_MS))
-  }, [showScorePop, startTimer])
+    // 투수가 잠깐 숨 고른 뒤 바로 다시 던짐
+    refillQueue(PITCHER_REST_MS)
+  }, [showScorePop, refillQueue])
 
-  // 지금 파워 (0~1) — 누른 시간 / POWER_FULL_MS
+  // 지금 파워 (POWER_MIN~1) — 누르는 순간 POWER_MIN, POWER_FULL_MS 동안 누르면 가득 (안 누르는 중이면 POWER_MIN)
   const currentPower = (now) =>
-    powerStartRef.current == null ? 0 : Math.min(1, (now - powerStartRef.current) / POWER_FULL_MS)
+    powerStartRef.current == null ? POWER_MIN
+      : Math.min(1, POWER_MIN + (1 - POWER_MIN) * (now - powerStartRef.current) / POWER_FULL_MS)
+
+  // 파워 충전 시작 (피버 중 누름 / 준비가 끝날 때 누르고 있었음)
+  const startCharging = () => {
+    powerStartRef.current = performance.now()
+    setPowerCharging(true)
+    haptic('tickWeak')
+  }
 
   // ── 파워 스윙 — 파워만큼 공이 따라라락 연달아 날아가고 피버 종료 ──
   const powerSwing = useCallback((dir) => {
@@ -322,13 +342,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const power = currentPower(performance.now())
     const count = powerBallCount(power)
     powerStartRef.current = null
-    if (power >= POWER_SWING_MIN) setGrandSlam(true)
+    clearTimeout(grandSlamTimeout.current)
+    setGrandSlam(true)
+    grandSlamTimeout.current = setTimeout(() => setGrandSlam(false), 1200)
 
     // 대기열 공은 전부 치워버림
     setQueue([])
     stateRef.current = { ...stateRef.current, queue: [] }
-    powerPreviewRef.current = count
-    setPowerPreview(count)
     setPowerCharging(false)
     setPowerSwinging(true)
     triggerSwing(dir)
@@ -349,8 +369,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
         haptic('tickWeak')
       }, i * POWER_BALL_INTERVAL_MS))
     }
-    powerTimeouts.current.push(setTimeout(() => endFever(count), count * POWER_BALL_INTERVAL_MS + 400))
+    // 마지막 공이 발사되는 순간 피버 종료 — 바로 대기열 채우기 시작
+    powerTimeouts.current.push(setTimeout(() => endFever(count), (count - 1) * POWER_BALL_INTERVAL_MS))
   }, [endFever, triggerSwing])
+
+  useLayoutEffect(() => {
+    powerSwingRef.current = powerSwing
+  }, [powerSwing])
 
   // ── 피버 카운트다운 (종료 시각 기준 — 일시정지 후 남은 시간부터 재개) ──
   const runFeverClock = useCallback((remainingMs) => {
@@ -382,12 +407,15 @@ export default function GameScreen({ onGameOver, onQuit }) {
     powerStartRef.current = null
     powerSwungRef.current = false
     powerHeldMsRef.current = 0
-    powerPreviewRef.current = powerBallCount(0)
-    setPowerPreview(powerPreviewRef.current)
+    powerPctRef.current = Math.round(POWER_MIN * 100)
+    setPowerPct(powerPctRef.current)
     setPowerCharging(false)
     setPowerSwinging(false)
+    feverReadyRef.current = true
+    setFeverReady(true)
     playSfx('fever')
     playSfx('feverCrowd')
+    playSfx('scoreboardSoft')
     duckBgm(true)
     haptic('success')
     feverReadyUntilRef.current = performance.now() + FEVER_READY_MS
@@ -456,10 +484,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
     // 피버 중 — 누르기 시작하면 파워 충전, 떼면(release) 파워 스윙. 스윙은 한 번뿐
     if (isFever) {
       if (powerSwungRef.current || powerStartRef.current != null) return
-      if (performance.now() < feverReadyUntilRef.current) return  // 준비 시간 — 연타 관성 무시
-      powerStartRef.current = performance.now()
-      setPowerCharging(true)
-      haptic('tickWeak')
+      // 준비 시간 — 연타 관성 무시 (누른 채로 준비가 끝나면 그때 충전 시작)
+      if (feverReadyRef.current || performance.now() < feverReadyUntilRef.current) return
+      startCharging()
       return
     }
 
@@ -608,16 +635,18 @@ export default function GameScreen({ onGameOver, onQuit }) {
     startTimer()
   }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, startWatermelons, handleGameOver, startTimer, triggerSwing])
 
-  // ── 버튼·키에서 손 뗌 — 피버 중 충전하고 있었으면 파워 스윙 ──
-  const release = useCallback((dir) => {
+  // ── 버튼·키 누름/뗌 — 누르고 있는 입력을 기록 (준비 끝날 때 누르고 있으면 충전 시작) ──
+  const press = useCallback((id, dir) => {
+    heldInputsRef.current.add(id)
+    lastDirRef.current = dir
+    judge(dir)
+  }, [judge])
+
+  // 피버 중 충전하고 있었으면 뗀 순간의 파워로 스윙 (최소 POWER_MIN)
+  const release = useCallback((id, dir) => {
+    heldInputsRef.current.delete(id)
     if (pausedRef.current) return
     if (!feverActiveRef.current || powerStartRef.current == null) return
-    // 파워 절반 전에 떼면 스윙 대신 충전 취소 — 다시 꾹 누르면 됨
-    if (currentPower(performance.now()) < POWER_SWING_MIN) {
-      powerStartRef.current = null
-      setPowerCharging(false)
-      return
-    }
     powerSwing(dir)
   }, [powerSwing])
 
@@ -706,17 +735,23 @@ export default function GameScreen({ onGameOver, onQuit }) {
         if (feverActiveRef.current) {
           // 피버 중엔 타자 옆 게이지는 숨기고, 타이머 바가 파워 충전 바 (스윙 후엔 그 파워로 멈춤)
           ratio = 0
+          // 준비 끝 — 누르고 있었으면 바로 충전 시작
+          if (feverReadyRef.current && now >= feverReadyUntilRef.current) {
+            feverReadyRef.current = false
+            setFeverReady(false)
+            if (heldInputsRef.current.size > 0 && !powerSwungRef.current) startCharging()
+          }
           if (!powerSwungRef.current) {
+            // 준비 때부터 POWER_MIN만큼 차 있음 — 방망이 바와 버튼 채움이 같은 값
             const power = currentPower(now)
-            if (timerBarRef.current) {
-              timerBarRef.current.style.transform = `scaleX(${power})`
-              timerBarRef.current.classList.toggle('power-ready', power >= POWER_SWING_MIN)
+            if (timerBarRef.current) timerBarRef.current.style.transform = `scaleX(${power})`
+            screenRef.current?.style.setProperty('--power', power)
+            const pct = Math.round(power * 100)
+            if (pct !== powerPctRef.current) {
+              powerPctRef.current = pct
+              setPowerPct(pct)
             }
-            const count = powerBallCount(power)
-            if (count !== powerPreviewRef.current) {
-              powerPreviewRef.current = count
-              setPowerPreview(count)
-            }
+            if (power >= 1) powerSwingRef.current(lastDirRef.current)  // 가득 차면 바로 스윙
           }
         } else {
           if (!feverPendingRef.current && chargeRef.current > 0
@@ -747,9 +782,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   useEffect(() => {
     new Image().src = '/assets/feverpitcher.png'  // 30콤보 진입 시 교체 지연 방지
     endedRef.current = false  // StrictMode 재마운트 시 이전 cleanup의 종료 표시 해제
-    const initial = buildQueue([], 0, pitchDirs)
-    setQueue(initial)
-    startTimer()
+    refillQueue(300)  // 투수가 하나씩 던져 채우고 타이머 시작
     return () => {
       cancelAnimationFrame(timerRaf.current)
       clearInterval(feverTimer.current)
@@ -758,6 +791,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       Object.values(scorePopTimeouts.current).forEach(clearTimeout)
       clearTimeout(hitLabelTimeout.current)
       clearTimeout(hrFlashTimeout.current)
+      clearTimeout(grandSlamTimeout.current)
       powerTimeouts.current.forEach(clearTimeout)
       endedRef.current = true
       stopSfx('fever')
@@ -777,11 +811,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
       const dir = keyDir(e.key)
       if (!dir) return
       e.preventDefault()
-      if (!e.repeat) judge(dir)  // 꾹 누를 때 자동 반복 입력은 무시 (피버 충전용 홀드)
+      if (!e.repeat) press(`key-${e.key}`, dir)  // 꾹 누를 때 자동 반복 입력은 무시 (피버 충전용 홀드)
     }
     const onKeyUp = (e) => {
       const dir = keyDir(e.key)
-      if (dir) release(dir)
+      if (dir) release(`key-${e.key}`, dir)
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('keyup', onKeyUp)
@@ -789,7 +823,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [judge, release, togglePause])
+  }, [press, release, togglePause])
 
   // ── 활성 구종 힌트 계산 ──
   const activeTypes = getActivePitches(unlockStep, pitchDirs)
@@ -811,15 +845,24 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const pitcherSweat = fever || combo >= 30
   const pitcherSrc = pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
 
-  const renderBall = (pitch, className, size = 'lane', feverBall = false) => {
+  // goldDelayMs: 피버 준비 중 레인 공이 금테 공으로 바뀌는 시점 (뒤쪽 공부터 차례로, 일반 공 위에 겹쳐 서서히 나타남)
+  const renderBall = (pitch, className, size = 'lane', feverBall = false, goldDelayMs = null) => {
     // 피버 중엔 레인·타구 공이 금테 공으로 (좌/우 힌트·수박은 그대로)
-    const img = pitch.watermelon ? WATERMELON_IMAGE
-      : feverBall ? toFeverBallImage(getPitchBallImage(pitch.id, pitchBallImages))
-        : getPitchBallImage(pitch.id, pitchBallImages)
+    const baseImg = pitch.watermelon ? WATERMELON_IMAGE : getPitchBallImage(pitch.id, pitchBallImages)
+    const img = feverBall && !pitch.watermelon ? toFeverBallImage(baseImg) : baseImg
     if (img) {
       return (
         <div className={`${className} has-img`}>
           <img src={img} className={`ball-sprite ${size}${feverBall ? ' fever' : ''}`} alt="" draggable={false} />
+          {goldDelayMs != null && !pitch.watermelon && (
+            <img
+              src={toFeverBallImage(baseImg)}
+              className={`ball-sprite ${size} fever gold-in`}
+              style={{ '--gold-delay': `${goldDelayMs}ms` }}
+              alt=""
+              draggable={false}
+            />
+          )}
         </div>
       )
     }
@@ -866,7 +909,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   )
 
   return (
-    <div className={`game-screen scene-${sceneMood}${paused ? ' paused' : ''}${grandSlam ? ' grand-slam' : ''}`}>
+    <div ref={screenRef} className={`game-screen scene-${sceneMood}${paused ? ' paused' : ''}${grandSlam ? ' grand-slam' : ''}`}>
       <Crowd mood={crowdMood} hush={outFlash} />
       <Fielders mood={sceneMood} />
 
@@ -911,12 +954,15 @@ export default function GameScreen({ onGameOver, onQuit }) {
         ))}
       </div>
 
-      {/* 중앙 — 평소엔 콤보, 피버 중엔 이번 피버 연타 수 */}
-      {fever ? (
+      {/* 피버 내내 — 투수·타자·공·방망이·버튼만 남기고 배경 살짝 어둡게 (끝나면 서서히 밝아짐) */}
+      <div className={`fever-dim${fever ? ' on' : ''}`} />
+
+      {/* 중앙 — 평소엔 콤보, 피버 중엔 누르는 순간부터 파워 % */}
+      {fever ? (powerCharging || powerSwinging) && (
         <div className="center-combo fever-taps">
-          <span className="center-label">BALLS</span>
+          <span className="center-label">POWER</span>
           <div className="center-num">
-            <span key={powerPreview} className="combo-num">{powerPreview}</span>
+            <span className="combo-num">{powerPct}%</span>
           </div>
         </div>
       ) : combo > 0 && (
@@ -946,10 +992,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
         {queue.map((bt, i) => (
           <div
             key={bt.uid}
-            className={`ball-item-wrap depth-${i}`}
+            className={`ball-item-wrap depth-${i}${bt.fromPitcher ? ' from-pitcher' : ''}`}
             style={ballLaneLayout(i, getPitchDir(bt.id, pitchDirs))}
           >
-            {renderBall(bt, 'ball-item', 'lane', fever)}
+            {renderBall(bt, 'ball-item', 'lane', false, fever ? (queue.length - 1 - i) * 70 : null)}
           </div>
         ))}
       </div>
@@ -975,12 +1021,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 타이머 — 피버 중엔 남은 피버 시간, 수박 타임엔 수박색 (바는 타이머 tick / 게이지 루프가 DOM 직접 갱신) */}
       <div className={`timer-wrap ${fever ? 'fever' : melonFront ? 'melon' : timerLevel}`}>
         <div className="timer-bar-area">
-          <div className="timer-track">
+          <div className={`timer-track${fever ? ' bat' : ''}`}>
             <div className="timer-bar" ref={timerBarRef} />
           </div>
           {/* 타격 등급 경계 표시 — 바 위 작은 픽셀 화살표, 남은 시간 2.7s(홈런) / 2.1s(2루타) / 0.7s(파울 시작) */}
-          {/* 피버 파워 바 — 절반 지점 표시 (여기부터 떼면 GRAND SLAM) */}
-          {fever && <i className="power-half" style={{ left: `${POWER_SWING_MIN * 100}%` }} aria-hidden="true" />}
           {!fever && !melonFront && (
             <div className="timer-zones" aria-hidden="true">
               <i className="hr" style={{ left: '90%' }} />
@@ -995,7 +1039,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         {/* 초는 바 오른쪽, 바 아래는 피버 중엔 연타 안내 / 평소엔 타격 결과 (자리는 항상 확보) */}
         {rapidTap ? (
           <div className={`fever-sub${melonFront ? ' melon' : ''}`} style={{ visibility: powerSwinging ? 'hidden' : 'visible' }}>
-            {!fever ? '마구 눌러요!' : powerCharging ? '절반 넘기고 떼요!' : '꾹 눌렀다 떼요!'}
+            {fever ? '꾹 누르세요!' : '마구 눌러요!'}
           </div>
         ) : (
           <div
@@ -1011,12 +1055,14 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 좌/우 버튼 + 타자 */}
       <div className="btn-row">
         <button
-          className={`dir-btn ${swingDir === 'left' ? 'pressed' : ''}`}
-          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); judge('left') }}
-          onPointerUp={() => release('left')}
-          onPointerCancel={() => release('left')}
+          className={`dir-btn${fever ? ' round' : ''}${swingDir === 'left' ? ' pressed' : ''}`}
+          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); press(`ptr-${e.pointerId}`, 'left') }}
+          onPointerUp={(e) => release(`ptr-${e.pointerId}`, 'left')}
+          onPointerCancel={(e) => release(`ptr-${e.pointerId}`, 'left')}
           aria-label="Left"
         >
+          {/* 피버 — 방망이 바와 같은 파워만큼 금색으로 차오름 (--power) */}
+          {fever && <span className="btn-fill" aria-hidden="true" />}
           {rapidTap && !powerSwinging && <span className="tap-badge left">{tapBadge}</span>}
           <span className="dir-arrow left" />
         </button>
@@ -1034,12 +1080,14 @@ export default function GameScreen({ onGameOver, onQuit }) {
           </div>
         </div>
         <button
-          className={`dir-btn ${swingDir === 'right' ? 'pressed' : ''}`}
-          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); judge('right') }}
-          onPointerUp={() => release('right')}
-          onPointerCancel={() => release('right')}
+          className={`dir-btn${fever ? ' round' : ''}${swingDir === 'right' ? ' pressed' : ''}`}
+          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); press(`ptr-${e.pointerId}`, 'right') }}
+          onPointerUp={(e) => release(`ptr-${e.pointerId}`, 'right')}
+          onPointerCancel={(e) => release(`ptr-${e.pointerId}`, 'right')}
           aria-label="Right"
         >
+          {/* 피버 — 방망이 바와 같은 파워만큼 금색으로 차오름 (--power) */}
+          {fever && <span className="btn-fill" aria-hidden="true" />}
           {rapidTap && !powerSwinging && <span className="tap-badge right">{tapBadge}</span>}
           <span className="dir-arrow right" />
         </button>
@@ -1057,24 +1105,20 @@ export default function GameScreen({ onGameOver, onQuit }) {
         {popMsg.text}
       </div>
 
-      {/* 피버 */}
-      {fever && (
-        <>
-          <div className="fever-overlay" />
-          <div className="fever-ui">
-            {grandSlam ? (
-              <div className="fever-title grand-slam">
-                <span className="fever-title-text">GRAND SLAM</span>
-              </div>
-            ) : (
-              <div className="fever-title">
-                <span className="fever-fire">🔥</span>
-                <span className="fever-title-text">FEVER!</span>
-                <span className="fever-fire">🔥</span>
-              </div>
-            )}
-          </div>
-        </>
+      {/* 피버 — 준비 중 READY..., 스윙하면 GRAND SLAM (피버가 끝나도 잠깐 유지) */}
+      {fever && <div className="fever-overlay" />}
+      {(grandSlam || (fever && feverReady)) && (
+        <div className="fever-ui">
+          {grandSlam ? (
+            <div className="fever-title grand-slam">
+              <span className="fever-title-text">GRAND SLAM</span>
+            </div>
+          ) : (
+            <div className="fever-title ready">
+              <span className="fever-title-text">READY...</span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* 일시정지 — 반투명 블라인드 + 메뉴 */}

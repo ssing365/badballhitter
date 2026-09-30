@@ -139,23 +139,22 @@ export const FEVER_CHARGE_DECAY_PER_SEC = 2
 // 구종 해금과 같은 hit에 차지가 가득 차면 되돌리는 양 (새 구종을 먼저 보여주기 위해 피버를 미룸)
 export const FEVER_UNLOCK_DELAY = 2
 
-// 피버 지속시간 (초) — 이 안에 꾹 눌렀다 떼서 파워 스윙 한 번 (시간이 다 되면 그 시점 파워로 자동 스윙)
+// 피버 지속시간 (초) — 준비 시간 뒤 이 안에 꾹 눌렀다 떼서 파워 스윙 한 번 (시간이 다 되면 그 시점 파워로 자동 스윙)
 export const FEVER_DURATION = 4
 
-// 파워 스윙 — 누른 시간만큼 파워(0~1)가 차고, 파워에 비례해 공 MIN~MAX개가 연달아 날아감
-export const POWER_FULL_MS = 1500
-export const POWER_BALLS_MIN = 3
-export const POWER_BALLS_MAX = 15
-export const POWER_BALL_INTERVAL_MS = 60
+// 파워 스윙 — 누르는 순간 POWER_MIN, 누른 시간만큼 선형으로 차서 POWER_FULL_MS에 가득(가득 차면 바로 스윙)
+// 준비 끝나자마자 눌러도 0.3초 여유를 두고 가득 차도록 피버 시간보다 살짝 짧게
+export const POWER_FULL_MS = FEVER_DURATION * 1000 - 300
+export const POWER_MIN = 0.2
+export const POWER_BALLS_MAX = 20
+export const POWER_BALL_INTERVAL_MS = 40
 // 피버 시작 후 입력을 무시하는 준비 시간 — 연타하던 손이 바로 스윙해버리지 않게 (충전 시간 4초와 별도)
 export const FEVER_READY_MS = 800
 // 파워 스윙 후 투수가 숨 고르는 시간, 이후 공을 하나씩 다시 던져 대기열을 채우는 간격
-export const PITCHER_REST_MS = 700
-export const QUEUE_REFILL_INTERVAL_MS = 80
-// 파워 절반(POWER_SWING_MIN) 이상에서 떼야 GRAND SLAM 스윙 — 절반~가득이 MIN~MAX개 (시간 초과 자동 스윙은 절반 미만이면 MIN개)
-export const POWER_SWING_MIN = 0.5
-export const powerBallCount = (power) =>
-  POWER_BALLS_MIN + Math.round(Math.max(0, (power - POWER_SWING_MIN) / (1 - POWER_SWING_MIN)) * (POWER_BALLS_MAX - POWER_BALLS_MIN))
+export const PITCHER_REST_MS = 100
+export const QUEUE_REFILL_INTERVAL_MS = 60
+// 파워(POWER_MIN~1)에 비례해 날아가는 공 수 — 20%=4개 ~ 100%=20개
+export const powerBallCount = (power) => Math.round(POWER_BALLS_MAX * Math.max(POWER_MIN, power))
 
 // 게임 종료 시 해금 단계(표시 구종 수) 기준 등급
 export const GRADES = [
