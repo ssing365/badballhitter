@@ -40,6 +40,18 @@ const tracks = {
   }),
 }
 
+let currentType = null
+let ducked = false
+
+// html5 play()가 대기 중(_playLock)일 때 stop()은 Howler 큐에만 쌓이고, 재생이 시작돼도 실행되지 않음
+// → 첫 탭의 touchend가 타이틀 곡 재생을 시작한 직후 Play 클릭이 멈추려 하면 두 곡이 겹침
+// 실제 재생이 시작된 시점에 현재 트랙이 아니면 바로 정지
+Object.entries(tracks).forEach(([key, howl]) => {
+  howl.on('play', () => {
+    if (currentType !== key) howl.stop()
+  })
+})
+
 export const isMuted = () => muted
 
 // BGM·효과음 전체 음소거 (Howler 전역) — 트랙은 계속 재생하고 음소거만 토글
@@ -52,9 +64,6 @@ export const setMuted = (next) => {
     // storage 차단 환경에서는 저장만 생략
   }
 }
-
-let currentType = null
-let ducked = false
 
 // 현재 목표 BGM 볼륨 — 새 트랙 시작·정지 후 복구도 이 값 기준
 const bgmVolume = () => (ducked ? BGM_VOLUME * BGM_DUCK_RATIO : BGM_VOLUME)
