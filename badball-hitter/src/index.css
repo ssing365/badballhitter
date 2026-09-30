@@ -5,11 +5,19 @@
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* 연타 시 더블탭 확대·스크롤 방지 */
 }
- 
+
+/* 모바일 브라우저에서 100vh가 보이는 영역보다 커서 생기던 페이지 스크롤 차단 */
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 html, body, #root {
   width: 100%;
   min-height: 100vh;
+  min-height: 100svh;
   background: #0f172a;
   display: flex;
   justify-content: center;
