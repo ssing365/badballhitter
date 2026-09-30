@@ -136,8 +136,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const cycleChargeRef = useRef(0)
   const melonPendingRef = useRef(0)       // 아직 대기열에 안 들어온 수박 수
   const melonActiveRef = useRef(false)    // 수박 차지 가득 ~ 마지막 수박 처리까지 (차지 멈춤)
-  const melonGaugeRef = useRef(null)
-  const melonGaugeFillRef = useRef(null)
 
   // ── 일시정지 ──
   const pausedRef = useRef(false)
@@ -687,7 +685,6 @@ export default function GameScreen({ onGameOver, onQuit }) {
   useEffect(() => {
     let last = performance.now()
     let shown = -1
-    let melonShown = -1
     const loop = (now) => {
       const dt = (now - last) / 1000
       last = now
@@ -721,16 +718,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
           gaugeRef.current?.classList.toggle('near-full', !feverActiveRef.current && ratio >= 0.8)
         }
 
-        // 수박 게이지 — 수박 진행 중엔 가득 찬 채로 멈춤
+        // 수박 차지 — 화면엔 안 보이고 뒤에서만 계산 (수박 진행 중엔 멈춤)
         if (!melonActiveRef.current && cycleChargeRef.current > 0
           && now - lastHitAtRef.current > FEVER_CHARGE_DECAY_DELAY_MS) {
           cycleChargeRef.current = Math.max(0, cycleChargeRef.current - FEVER_CHARGE_DECAY_PER_SEC * dt)
-        }
-        const melonRatio = melonActiveRef.current ? 1 : cycleChargeRef.current / CYCLE_CHARGE_MAX
-        if (melonRatio !== melonShown && melonGaugeFillRef.current) {
-          melonShown = melonRatio
-          melonGaugeFillRef.current.style.transform = `scaleY(${melonRatio})`
-          melonGaugeRef.current?.classList.toggle('near-full', melonRatio >= 0.8)
         }
       }
       gaugeRaf.current = requestAnimationFrame(loop)
@@ -968,8 +959,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       <div className="hint-side left">{leftHints.map(renderHint)}</div>
       <div className="hint-side right">{rightHints.map(renderHint)}</div>
 
-      {/* 타이머 — 피버 중엔 남은 피버 시간 (바는 타이머 tick / 게이지 루프가 DOM 직접 갱신) */}
-      <div className={`timer-wrap ${fever ? 'fever' : timerLevel}`}>
+      {/* 타이머 — 피버 중엔 남은 피버 시간, 수박 타임엔 수박색 (바는 타이머 tick / 게이지 루프가 DOM 직접 갱신) */}
+      <div className={`timer-wrap ${fever ? 'fever' : melonFront ? 'melon' : timerLevel}`}>
         <div className="timer-bar-area">
           <div className="timer-track">
             <div className="timer-bar" ref={timerBarRef} />
@@ -1021,17 +1012,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
             {swingDir && <div key={swingId} className={`swing-trail ${swingDir}${powerSwinging ? ' power' : ''}`} />}
             <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
           </div>
-          {/* 차지 게이지 — 왼쪽 피버, 오른쪽 수박 (채움은 gauge 루프에서 DOM 직접 갱신) */}
+          {/* 피버 차지 게이지 (채움은 gauge 루프에서 DOM 직접 갱신) */}
           <div ref={gaugeRef} className="fever-gauge power" aria-hidden="true">
             <span className="fever-gauge-label">FVR</span>
             <div className="fever-gauge-track">
               <div ref={gaugeFillRef} className="fever-gauge-fill" />
-            </div>
-          </div>
-          <div ref={melonGaugeRef} className="fever-gauge melon" aria-hidden="true">
-            <img className="melon-gauge-icon" src={WATERMELON_IMAGE} alt="" draggable={false} />
-            <div className="fever-gauge-track">
-              <div ref={melonGaugeFillRef} className="fever-gauge-fill" />
             </div>
           </div>
         </div>

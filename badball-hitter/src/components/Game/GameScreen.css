@@ -665,6 +665,13 @@
     z-index: 37;
   }
 
+  /* 수박 타임 — 초록 껍질 → 빨간 속 */
+  .timer-wrap.melon {
+    --timer-fill: linear-gradient(90deg, #166534 0%, #22c55e 30%, #f87171 70%, #ef4444 100%);
+    --timer-glow: #22c55e;
+    --timer-num: #fca5a5;
+  }
+
   .timer-track {
     position: relative;
     width: 100%;
@@ -678,6 +685,13 @@
   .timer-wrap.fever .timer-track {
     height: 16px;
     animation: gauge-glow 0.3s steps(1, end) infinite;
+  }
+
+  .timer-wrap.melon .timer-track { animation: melon-gauge-glow 0.3s steps(1, end) infinite; }
+
+  @keyframes melon-gauge-glow {
+    0%  { box-shadow: 0 0 0 1px #86efac, 0 0 8px #22c55e; }
+    50% { box-shadow: 0 0 0 1px #fff, 0 0 4px #f87171; }
   }
 
   /* 채움 — 왼쪽 기준으로 줄어듦 (scaleX는 JS가 매 프레임 갱신) */
@@ -869,30 +883,11 @@
   }
 
   /* 피버 게이지 — 타자 왼쪽, 크고 두껍게 (40칸이라 차는 게 잘 보이도록) */
-  .fever-gauge.power { right: calc(100% + 26px); }  /* 수박 게이지(폭 16px) + 간격 */
+  .fever-gauge.power { right: calc(100% + 4px); }
   .fever-gauge.power .fever-gauge-label { font-size: 8px; }
   .fever-gauge.power .fever-gauge-track {
     width: 14px;
     height: 120px;
-  }
-
-  /* 수박 게이지 — 타자 바로 왼쪽 (피버 게이지 - 수박 게이지 - 타자), 초록 껍질 → 빨간 속 */
-  .fever-gauge.melon { right: calc(100% + 4px); }
-  .fever-gauge.melon .fever-gauge-fill {
-    background: linear-gradient(0deg, #166534 0%, #22c55e 30%, #f87171 70%, #ef4444 100%);
-  }
-  .fever-gauge.melon.near-full .fever-gauge-track {
-    animation: melon-gauge-glow 0.3s steps(1, end) infinite;
-  }
-  .melon-gauge-icon {
-    width: 16px;
-    height: 16px;
-    image-rendering: pixelated;
-  }
-
-  @keyframes melon-gauge-glow {
-    0%  { box-shadow: 0 0 0 1px #86efac, 0 0 8px #22c55e; }
-    50% { box-shadow: 0 0 0 1px #fff, 0 0 4px #f87171; }
   }
 
   @keyframes gauge-glow {
