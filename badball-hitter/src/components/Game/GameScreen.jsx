@@ -238,6 +238,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     melonActiveRef.current = true
     melonPendingRef.current = WATERMELON_MIN + Math.floor(Math.random() * (WATERMELON_MAX - WATERMELON_MIN + 1))
     setTimeout(() => {
+      if (!melonActiveRef.current) return  // 그 사이 피버로 취소됨
       showPop('WATERMELON!', 'melon')
       playSfx('newBall')
     }, 300)
@@ -248,6 +249,18 @@ export default function GameScreen({ onGameOver, onQuit }) {
       melonActiveRef.current = false
       cycleChargeRef.current = 0
     }
+  }
+
+  // 피버가 오면 수박은 전부 취소 — 대기열 수박은 원래 구종의 일반 공으로, 수박 차지는 0부터
+  const cancelWatermelons = () => {
+    melonPendingRef.current = 0
+    melonActiveRef.current = false
+    cycleChargeRef.current = 0
+    const { queue: curQueue } = stateRef.current
+    if (!curQueue.some((b) => b.watermelon)) return
+    const next = curQueue.map((b) => (b.watermelon ? { ...b, watermelon: false } : b))
+    setQueue(next)
+    stateRef.current = { ...stateRef.current, queue: next }
   }
 
   // ── 피버 종료 — 파워 스윙으로 날린 공 점수를 한 번에 합산 ──
@@ -311,9 +324,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     powerStartRef.current = null
     if (power >= POWER_SWING_MIN) setGrandSlam(true)
 
-    // 대기열 공은 전부 치워버림 — 남은 수박은 다시 채울 때 들어오도록 되돌림
-    const { queue: curQueue } = stateRef.current
-    melonPendingRef.current += curQueue.filter((b) => b.watermelon).length
+    // 대기열 공은 전부 치워버림
     setQueue([])
     stateRef.current = { ...stateRef.current, queue: [] }
     powerPreviewRef.current = count
@@ -323,7 +334,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     triggerSwing(dir)
     haptic('success')
 
-    // 날아가는 공은 대기열과 별개 (대기열의 수박은 피버 뒤에 그대로)
+    // 날아가는 공은 대기열과 별개
     const { unlockStep: step, pitchDirs: dirs } = stateRef.current
     const ids = getActivePitches(step, dirs).map((p) => p.id)
     for (let i = 0; i < count; i++) {
@@ -364,6 +375,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     feverPendingRef.current = false
     feverActiveRef.current = true
     chargeRef.current = 0
+    cancelWatermelons()
     timerResumeRef.current = null
     cancelAnimationFrame(timerRaf.current)
     setFever(true)
@@ -468,7 +480,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       lastHitAtRef.current = performance.now()  // 수박 치는 동안 피버 차지가 줄지 않게
       stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore }
       checkMelonEnd(nextQueue)
-      // 수박도 피버 차지 +1 — 가득 차면 피버 (스윙 때 남은 수박은 대기열로 되돌아감)
+      // 수박도 피버 차지 +1 — 가득 차면 피버 (피버가 오면 남은 수박은 사라짐)
       chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
       if (chargeRef.current >= FEVER_CHARGE_MAX && !feverPendingRef.current) {
         feverPendingRef.current = true
@@ -544,11 +556,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
         }
       }
 
-      // 수박 차지 — 파울 제외. 가득 차면 다음 공들이 수박 (피버 중엔 피버 끝나고 들어옴)
+      // 수박 차지 — 파울 제외. 가득 차면 다음 공들이 수박 (피버 중엔 차지 안 쌓임)
       if (hitGrade.id !== 'foul' && !melonActiveRef.current) {
         cycleChargeRef.current = Math.min(CYCLE_CHARGE_MAX, cycleChargeRef.current + 1)
         if (cycleChargeRef.current >= CYCLE_CHARGE_MAX) {
           if (isUnlocking) cycleChargeRef.current = CYCLE_CHARGE_MAX - FEVER_UNLOCK_DELAY
+          else if (feverPendingRef.current) cycleChargeRef.current = 0  // 피버와 겹치면 수박 없이 초기화
           else startWatermelons()
         }
       }
@@ -968,7 +981,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           {/* 타격 등급 경계 표시 — 바 위 작은 픽셀 화살표, 남은 시간 2.7s(홈런) / 2.1s(2루타) / 0.7s(파울 시작) */}
           {/* 피버 파워 바 — 절반 지점 표시 (여기부터 떼면 GRAND SLAM) */}
           {fever && <i className="power-half" style={{ left: `${POWER_SWING_MIN * 100}%` }} aria-hidden="true" />}
-          {!fever && (
+          {!fever && !melonFront && (
             <div className="timer-zones" aria-hidden="true">
               <i className="hr" style={{ left: '90%' }} />
               <i className="double" style={{ left: '70%' }} />

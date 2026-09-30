@@ -105,7 +105,7 @@ badball-hitter/
 | DOUBLE! | 2.1초 이상 남김 | 1.2 | 기본 궤적 |
 | SINGLE! | 0.7초 초과 남김 | 1 | 짧게 |
 | FOUL | 마지막 0.7초 | 0.7 | 옆으로 크게 빠짐 |
-- 타이머 바 색 = 지금 치면 받을 등급(`timerLevelAt`): hr 금 / safe 초록 / warn 노랑 / danger 빨강 깜빡임. 바 위 픽셀 화살표로 경계(2.7s 금·2.1s 초록·0.7s 빨강) 표시
+- 타이머 바 색 = 지금 치면 받을 등급(`timerLevelAt`): hr 금 / safe 초록 / warn 노랑 / danger 빨강 깜빡임. 바 위 픽셀 화살표로 경계(2.7s 금·2.1s 초록·0.7s 빨강) 표시 (피버·수박 타임엔 숨김)
 - 판정 결과는 타이머 바 아래(`.hit-label`)에 작게 0.7초. 홈런 수·홈런 점수는 결과 화면 Home Run 행
 
 ### 게임 규칙
@@ -113,9 +113,9 @@ badball-hitter/
 - **게임 오버**: 3아웃 (오답 또는 시간 초과 시 1아웃, 콤보 리셋)
 - **입력 반응**: 판정 즉시 대기열 보충 + 다음 공 타이머 시작 (대기 없이 연타 가능). 리렌더 전 연속 입력도 맞게 판정하도록 `judge`가 바뀐 값을 `stateRef`에 바로 반영
 - **피버 차지 바**(타자 왼쪽 세로 게이지 `.fever-gauge.power`, 14×120px): 정타(파울 포함) 1회당 +1, `FEVER_CHARGE_MAX = 40`에 도달하면 피버. 아날로그 바라서 마지막 정타 후 `FEVER_CHARGE_DECAY_DELAY_MS`(1초)가 지나면 초당 `FEVER_CHARGE_DECAY_PER_SEC`(2)씩 감소 (1.5초 무입력 시 1칸). 아웃(오답·시간 초과) 시 절반, 피버 종료 시 0. 구종 해금과 겹치면 차지를 `MAX - FEVER_UNLOCK_DELAY`(2)로 되돌려 미룸. `chargeRef`에 두고 rAF 루프가 게이지 DOM을 직접 갱신(피버 중에는 게이지를 숨기고 같은 루프가 타이머 바에 파워를 그림)
-- **수박 차지 바**(타자 바로 왼쪽 `.fever-gauge.melon` — 피버 바·수박 바·타자 순, `cycleChargeRef`): 파울 제외 정타 1회당 +1, `CYCLE_CHARGE_MAX = 15`에 도달하면 `WATERMELON!` 팝업 + 다음에 채워지는 공 `WATERMELON_MIN~MAX`(15~20)개가 수박(`buildQueue`의 `melonPendingRef`, 대기열 뒤에서 들어옴). 감소 규칙은 피버 바와 같음, 아웃 시 0, 해금과 겹치면 미룸. 수박이 남아 있는 동안(`melonActiveRef`)은 게이지가 가득 찬 채로 멈추고, 마지막 수박을 치면 0. 피버 중엔 수박을 대기열에 들이지 않음
-- **수박 연타**: 맨 앞 공이 수박이면(`melonFront`) 방향 무관 — 누를 때마다 1개 `WATERMELON_POINTS`(100) 즉시 가산(결과 화면에선 Hits에 포함), 콤보·수박 차지·타율 변화 없음, 피버 차지는 +1(가득 차면 피버). 수박 타임엔 좌/우 힌트 공도 수박. 타이머는 평소처럼 돌아서 놓치면 TIME UP. 타이머 아래 수박색 "마구 눌러요!"(`.fever-sub.melon`)·TAP! 안내
-- **피버(파워 스윙)**: 시작 후 `FEVER_READY_MS`(0.8초)는 입력 무시(연타 관성 방지, 카운트다운은 4초로 표시), 이어서 `FEVER_DURATION = 4`초 안에 방향 버튼(좌우 무관)을 꾹 눌러 파워 충전 → 떼면 파워 스윙 한 번(`powerSwing`). 파워 절반(`POWER_SWING_MIN`, 바에 흰 눈금 `.power-half`, 넘으면 바 번쩍 `.power-ready`) 전에 떼면 스윙 없이 충전 취소. 절반 이상에서 떼면 FEVER 제목 자리에 `GRAND SLAM`(붉은 금빛, 쾅 내려찍힘 + 화면 흔들림), 타이머 정지·아웃 없음. 누른 시간 / `POWER_FULL_MS`(1.5초) = 파워, 공 `powerBallCount` = 파워 절반~가득이 `POWER_BALLS_MIN~MAX`(3~15)개로, `POWER_BALL_INTERVAL_MS`(60ms) 간격으로 따라라락 날아감(대기열과 별개로 만든 공, 홈런 궤적). 4초가 끝나면 그 시점 파워로 자동 스윙(절반 미만이면 3개, GRAND SLAM 없음). 스윙 순간 대기열 공은 전부 치움(남은 수박은 `melonPendingRef`로 되돌림), 피버 종료 후 `PITCHER_REST_MS`(0.7초) 숨 고르고 `QUEUE_REFILL_INTERVAL_MS`(80ms)마다 한 개씩 던져 채운 뒤 타이머 시작(채우는 중 입력 무시 `refillingRef`). 날린 공 × `POWER_BALL_POINTS`(300)를 피버 종료 시 합산(전광판 아래 금색 `+N`). 중앙에 `BALLS` 예상 개수, 타이머 아래 "꾹 눌렀다 떼요!" → "절반 넘기고 떼요!", 버튼 위 `HOLD!`. 충전 중 타자는 뒤로 젖히고 떨며 금빛 오라(`.batter-wrap.charging`), 스윙 궤적은 크게(`.swing-trail.power`). 입력은 누름=`judge`, 뗌=`release`(버튼 `onPointerUp/Cancel` + pointer capture, 키보드 `keyup`, 키 자동 반복은 무시). 일시정지 시 누른 시간 보존(`powerHeldMsRef`). 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이)
+- **수박 차지**(화면엔 안 보임 — 사용자에겐 랜덤처럼, `cycleChargeRef`): 파울 제외 정타 1회당 +1, `CYCLE_CHARGE_MAX = 15`에 도달하면 `WATERMELON!` 팝업 + 다음에 채워지는 공 `WATERMELON_MIN~MAX`(15~20)개가 수박(`buildQueue`의 `melonPendingRef`, 대기열 뒤에서 들어옴). 감소 규칙은 피버 바와 같음, 아웃 시 0, 해금과 겹치면 미룸. 수박이 남아 있는 동안(`melonActiveRef`)은 차지가 멈추고, 마지막 수박을 치면 0. 피버가 시작되면 수박은 전부 취소(`cancelWatermelons` — 남은 수박 0, 대기열 수박은 일반 공으로, 차지 0), 같은 타격에 피버·수박 차지가 함께 가득 차면 수박 없이 차지 0
+- **수박 연타**: 맨 앞 공이 수박이면(`melonFront`) 방향 무관 — 누를 때마다 1개 `WATERMELON_POINTS`(100) 즉시 가산(결과 화면에선 Hits에 포함), 콤보·수박 차지·타율 변화 없음, 피버 차지는 +1(가득 차면 피버). 수박 타임엔 좌/우 힌트 공도 수박. 타이머는 평소처럼 돌아서 놓치면 TIME UP. 타이머 바는 수박색(초록 껍질 → 빨간 속, `.timer-wrap.melon`), 타이머 아래 수박색 "마구 눌러요!"(`.fever-sub.melon`)·TAP! 안내
+- **피버(파워 스윙)**: 시작 후 `FEVER_READY_MS`(0.8초)는 입력 무시(연타 관성 방지, 카운트다운은 4초로 표시), 이어서 `FEVER_DURATION = 4`초 안에 방향 버튼(좌우 무관)을 꾹 눌러 파워 충전 → 떼면 파워 스윙 한 번(`powerSwing`). 파워 절반(`POWER_SWING_MIN`, 바에 흰 눈금 `.power-half`, 넘으면 바 번쩍 `.power-ready`) 전에 떼면 스윙 없이 충전 취소. 절반 이상에서 떼면 FEVER 제목 자리에 `GRAND SLAM`(붉은 금빛, 쾅 내려찍힘 + 화면 흔들림), 타이머 정지·아웃 없음. 누른 시간 / `POWER_FULL_MS`(1.5초) = 파워, 공 `powerBallCount` = 파워 절반~가득이 `POWER_BALLS_MIN~MAX`(3~15)개로, `POWER_BALL_INTERVAL_MS`(60ms) 간격으로 따라라락 날아감(대기열과 별개로 만든 공, 홈런 궤적). 4초가 끝나면 그 시점 파워로 자동 스윙(절반 미만이면 3개, GRAND SLAM 없음). 스윙 순간 대기열 공은 전부 치움(그랜드슬램 후엔 일반 공만 채움), 피버 종료 후 `PITCHER_REST_MS`(0.7초) 숨 고르고 `QUEUE_REFILL_INTERVAL_MS`(80ms)마다 한 개씩 던져 채운 뒤 타이머 시작(채우는 중 입력 무시 `refillingRef`). 날린 공 × `POWER_BALL_POINTS`(300)를 피버 종료 시 합산(전광판 아래 금색 `+N`). 중앙에 `BALLS` 예상 개수, 타이머 아래 "꾹 눌렀다 떼요!" → "절반 넘기고 떼요!", 버튼 위 `HOLD!`. 충전 중 타자는 뒤로 젖히고 떨며 금빛 오라(`.batter-wrap.charging`), 스윙 궤적은 크게(`.swing-trail.power`). 입력은 누름=`judge`, 뗌=`release`(버튼 `onPointerUp/Cancel` + pointer capture, 키보드 `keyup`, 키 자동 반복은 무시). 일시정지 시 누른 시간 보존(`powerHeldMsRef`). 제목 `🔥 FEVER! 🔥`은 금빛 그라데이션 글씨(빛줄기 스침 + ✦ 반짝이)
 - **일시정지**: 우상단 버튼 / Esc / P, 탭 전환 시 자동. 타이머는 경과 시간(`startTimer(elapsedMs)`), 피버는 종료 시각 기준(`runFeverClock`)으로 멈췄다 재개. 메뉴는 Resume / Sound on·off / Vibration on·off(토스 웹뷰에서만) / Quit(타이틀)
 - **공 대기열**: `QUEUE_SIZE = 8`개, 레인은 투수 위(z 22), 맨 뒤 2개만 살짝 투명(`--ball-opacity` 0.88·0.76). 새 공은 자기 자리의 살짝 옆(그 구종 힌트 방향 쪽 ±10px)에서 작게 나타나며 들어옴(`ball-spawn`, `--spawn-x`), 레인 바닥 기준(`ballLaneLayout`, bottom %) — 맨 앞(쳐야 할 공)은 1.3배 + 흰 글로우, 뒤로 갈수록 작게 겹쳐 표시. 앞 공이 커져도 위로 자라서 타이머와 안 겹침
 - **처리된 공 연출**(`flyBalls`, 레인 밖 `.fly-layer` z 33): 판정 즉시 큐에서 빼고 keyframes 재생 후 `onAnimationEnd`로 제거. `hit`(친 방향 관중석으로 직선 → 끝에서 살짝 떨어지며 흐려짐, 좌/우 궤적 2종 `v0`/`v1` 랜덤, 등급별 거리) / `miss`(헛스윙 — 배트 반대쪽으로 비켜 몸쪽으로 커지며 지나감) / `take`(시간 초과 — 가운데로 지나감). 파워 스윙 공도 `hit`(`fever: true`면 금테 공)
@@ -232,8 +232,23 @@ scores (id uuid, nickname text, team_id text, score int,
 
 ## 구현 예정
 - 팀 선택/닉네임 화면 (TeamSelect 재작성 — 영어 UI, TEAMS 상수 추가)
-- 효과음 (스윙/포구 — `public/sounds/`에 파일만 있음)
-- 투수 표정이 콤보에 따라 변화 (10콤보: 당황, 20콤보: 분노)
-- 데일리 챌린지 (매일 고정 시퀀스, 전국 동일 패턴)
-- 개인 기록 그래프 ("어제보다 +230점")
-- 구종 해금 진행 바
+- 수박을 더 크고 탐스럽고 빛나게 (+ 깨질 때 과즙 파편)
+- 피버 시작 준비 시간(`FEVER_READY_MS`) 동안 READY 안내 따로 띄우기
+
+### 그랜드슬램(파워 피버)
+- 파워 충전 효과음 찾기 (결과 화면 효과음으로 같이 써도 될 듯)
+- 파워 스윙 때 날아가는 공들이 너무 정적 — 연출 개선 방법 찾기
+- 칠 때 차라랑 금빛 효과음, 수비수들 도망가기
+- 파워 충전 바 UI·문구 수정 — 'FEVER' 문구도 안 맞음
+- 풀충전 시 4초 기다리지 말고 바로 스윙할지 검토
+- 그랜드슬램 후 공이 너무 늦게 나옴 (`PITCHER_REST_MS`·`QUEUE_REFILL_INTERVAL_MS`)
+
+### 수박
+- 수박 콰작 소리 찾기
+- 좌우 힌트 수박 더 예쁘게 + 좌우로 둥둥 떠다니는 느낌
+
+### 버그·기타
+- 게임 시작 때와 그랜드슬램 후 공 행렬이 좌우에서 들어옴 → 투수로부터 일자로 쭉 들어오게
+- 쓰리 아웃 시 터치 금지 확인
+- 구종 6개 해금 이후 투수 교체 → 힌트 공 좌우 바뀜 or 랜덤 재배치
+- 랭킹 버튼이 토스 리더보드로 이동되는지 실기기 확인
