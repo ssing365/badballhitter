@@ -1067,7 +1067,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 좌/우 버튼 + 타자 */}
       <div className="btn-row">
         <button
-          className={`dir-btn${fever ? ' round' : ''}${swingDir === 'left' ? ' pressed' : ''}`}
+          className={`dir-btn${fever ? ' round' : ''}${melonFront ? ' melon' : ''}${swingDir === 'left' ? ' pressed' : ''}`}
           onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); press(`ptr-${e.pointerId}`, 'left') }}
           onPointerUp={(e) => release(`ptr-${e.pointerId}`, 'left')}
           onPointerCancel={(e) => release(`ptr-${e.pointerId}`, 'left')}
@@ -1075,7 +1075,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         >
           {/* 피버 — 방망이 바와 같은 파워만큼 금색으로 차오름 (--power) */}
           {fever && <span className="btn-fill" aria-hidden="true" />}
-          {rapidTap && !powerSwinging && <span className="tap-badge left">{tapBadge}</span>}
+          {rapidTap && !powerSwinging && <span className={`tap-badge left${melonFront ? ' melon' : ''}`}>{tapBadge}</span>}
           <span className="dir-arrow left" />
         </button>
         <div className={`batter-slot${fever ? ' fever-active' : ''}`}>
@@ -1092,7 +1092,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
           </div>
         </div>
         <button
-          className={`dir-btn${fever ? ' round' : ''}${swingDir === 'right' ? ' pressed' : ''}`}
+          className={`dir-btn${fever ? ' round' : ''}${melonFront ? ' melon' : ''}${swingDir === 'right' ? ' pressed' : ''}`}
           onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); press(`ptr-${e.pointerId}`, 'right') }}
           onPointerUp={(e) => release(`ptr-${e.pointerId}`, 'right')}
           onPointerCancel={(e) => release(`ptr-${e.pointerId}`, 'right')}
@@ -1100,7 +1100,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         >
           {/* 피버 — 방망이 바와 같은 파워만큼 금색으로 차오름 (--power) */}
           {fever && <span className="btn-fill" aria-hidden="true" />}
-          {rapidTap && !powerSwinging && <span className="tap-badge right">{tapBadge}</span>}
+          {rapidTap && !powerSwinging && <span className={`tap-badge right${melonFront ? ' melon' : ''}`}>{tapBadge}</span>}
           <span className="dir-arrow right" />
         </button>
       </div>

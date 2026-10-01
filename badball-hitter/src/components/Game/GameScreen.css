@@ -1177,6 +1177,25 @@
     50% { filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 14px #f97316); }
   }
 
+  /* 수박 연타 — 빨간 속 윗면 + 까만 씨, 밑면은 초록 껍질·연두 속껍질 (아웃 색이 우선하도록 .scene-out보다 앞) */
+  .dir-btn.melon {
+    --btn-face: #e11d48;
+    --btn-face-hi: #ff7a8a;
+    --btn-edge: #15803d;
+    --btn-rim: #14532d;
+    --btn-shade:
+      inset 0 -5px 0 #d9f99d,
+      inset 0 3px 0 rgba(255, 255, 255, 0.5);
+    --btn-arrow: #ffffff;
+    background:
+      radial-gradient(2px 3px at 18% 30%, #1c1917 98%, transparent),
+      radial-gradient(2px 3px at 82% 30%, #1c1917 98%, transparent),
+      radial-gradient(2px 3px at 30% 68%, #1c1917 98%, transparent),
+      radial-gradient(2px 3px at 70% 68%, #1c1917 98%, transparent),
+      linear-gradient(180deg, rgba(255,255,255,0.28) 0 38%, transparent 38%),
+      linear-gradient(180deg, var(--btn-face-hi), var(--btn-face));
+  }
+
 
   /* 피버 — 버튼 위 TAP! 말풍선, 좌우 번갈아 깜빡임 */
   .tap-badge {
@@ -1540,6 +1559,20 @@
   @keyframes melon-tap-blink {
     0%  { color: #fca5a5; border-color: #22c55e; }
     50% { color: #fff; border-color: #f87171; }
+  }
+
+  /* 수박 연타 — 버튼 위 TAP!도 같은 수박색 (꼬리는 테두리 색을 따라감) */
+  .tap-badge.melon {
+    color: #fca5a5;
+    background: rgba(20, 83, 45, 0.8);
+    border-color: #22c55e;
+    animation-name: tap-badge-melon-blink;
+  }
+  .tap-badge.melon::after { border-top-color: inherit; }
+
+  @keyframes tap-badge-melon-blink {
+    0%  { color: #fca5a5; border-color: #22c55e; scale: 1.15; }
+    50% { color: #fff; border-color: #f87171; scale: 1; }
   }
 
   /* ── 일시정지 ── */
