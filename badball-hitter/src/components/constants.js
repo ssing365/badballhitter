@@ -148,6 +148,8 @@ export const POWER_FULL_MS = FEVER_DURATION * 1000 - 300
 export const POWER_MIN = 0.2
 export const POWER_BALLS_MAX = 20
 export const POWER_BALL_INTERVAL_MS = 40
+// 이보다 짧게 누르고 떼면 스윙 없이 충전 취소 (피버 내내 — 연타하던 손이 실수로 스윙하지 않게)
+export const POWER_TAP_IGNORE_MS = 300
 // 피버 시작 후 입력을 무시하는 준비 시간 — 연타하던 손이 바로 스윙해버리지 않게 (충전 시간 4초와 별도)
 export const FEVER_READY_MS = 800
 // 파워 스윙 후 투수가 숨 고르는 시간, 이후 공을 하나씩 다시 던져 대기열을 채우는 간격

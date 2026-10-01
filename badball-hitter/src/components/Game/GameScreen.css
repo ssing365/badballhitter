@@ -754,7 +754,33 @@
     text-shadow: var(--pixel-outline);
   }
 
-  .timer-wrap.fever .timer-num { font-size: 16px; }
+  /* 피버 남은 초 — 방망이 오른쪽에 크게, 검은 바탕 + 금테로 배경과 분리 */
+  .timer-num.fever-sec {
+    margin: -4px 0;  /* 커진 만큼 줄 높이는 그대로 (레인 아래 여백 48px 안) */
+    padding: 3px 4px 2px 6px;
+    font-size: 24px;
+    color: #fde047;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #fde047;
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+    animation: fever-sec-tick 0.25s ease-out;
+  }
+  .timer-num.fever-sec.last {
+    color: #fca5a5;
+    border-color: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.9);
+    animation: fever-sec-tick 0.25s ease-out, fever-sec-blink 0.25s steps(1, end) infinite;
+  }
+
+  @keyframes fever-sec-tick {
+    0%   { scale: 1.5; }
+    100% { scale: 1; }
+  }
+
+  @keyframes fever-sec-blink {
+    0%  { color: #fca5a5; }
+    50% { color: #fff; }
+  }
 
   .timer-wrap .fever-sub,
   .timer-wrap .hit-label { grid-column: 1 / -1; justify-self: center; }
@@ -1333,6 +1359,7 @@
     .swing-trail,
     .batter-wrap.charging,
     .ball-sprite.gold-in,
+    .timer-num.fever-sec,
     .game-screen.grand-slam,
     .ball-lane .ball-item-wrap { animation: none !important; }
     .swing-trail { display: none !important; }

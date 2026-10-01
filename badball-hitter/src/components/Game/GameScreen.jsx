@@ -4,7 +4,7 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, toFeverBallImage,
-  POWER_FULL_MS, POWER_MIN, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
+  POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
@@ -642,11 +642,16 @@ export default function GameScreen({ onGameOver, onQuit }) {
     judge(dir)
   }, [judge])
 
-  // 피버 중 충전하고 있었으면 뗀 순간의 파워로 스윙 (최소 POWER_MIN)
+  // 피버 중 충전하고 있었으면 뗀 순간의 파워로 스윙 (최소 POWER_MIN) — 짧은 터치는 충전만 취소, 다시 꾹 누르면 됨
   const release = useCallback((id, dir) => {
     heldInputsRef.current.delete(id)
     if (pausedRef.current) return
     if (!feverActiveRef.current || powerStartRef.current == null) return
+    if (performance.now() - powerStartRef.current < POWER_TAP_IGNORE_MS) {
+      powerStartRef.current = null
+      setPowerCharging(false)
+      return
+    }
     powerSwing(dir)
   }, [powerSwing])
 
@@ -1035,7 +1040,14 @@ export default function GameScreen({ onGameOver, onQuit }) {
           {/* 홈런 — 바만 금빛으로 번쩍 */}
           {hrFlash > 0 && <div key={`hr-${hrFlash}`} className="timer-hr-flash" />}
         </div>
-        <span className="timer-num">{fever ? `${feverCountdown}s` : timerNum}</span>
+        {fever ? (
+          // 피버 남은 초 — 크게, 초가 바뀔 때마다 톡 튀고 마지막 1초는 빨갛게 깜빡임
+          <span key={`fever-sec-${feverCountdown}`} className={`timer-num fever-sec${feverCountdown <= 1 ? ' last' : ''}`}>
+            {feverCountdown}s
+          </span>
+        ) : (
+          <span className="timer-num">{timerNum}</span>
+        )}
         {/* 초는 바 오른쪽, 바 아래는 피버 중엔 연타 안내 / 평소엔 타격 결과 (자리는 항상 확보) */}
         {rapidTap ? (
           <div className={`fever-sub${melonFront ? ' melon' : ''}`} style={{ visibility: powerSwinging ? 'hidden' : 'visible' }}>
