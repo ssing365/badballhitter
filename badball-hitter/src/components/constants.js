@@ -132,6 +132,27 @@ export const WATERMELON_MIN = 15
 export const WATERMELON_MAX = 20
 export const WATERMELON_POINTS = 100
 export const WATERMELON_IMAGE = '/assets/balls/watermelon.png'
+// 수박 파편 스프라이트 시트 — scripts/cut-melon-shards.py가 깨진 수박 그림에서 잘라 만듦 (조각 위치는 그 출력값)
+export const MELON_SHARDS_IMAGE = '/assets/balls/melon_shards.png'
+export const MELON_SHARDS_SIZE = [370, 40]
+export const MELON_SHARDS = [
+  { x: 0, y: 0, w: 39, h: 40, big: true },
+  { x: 41, y: 0, w: 36, h: 36, big: true },
+  { x: 79, y: 0, w: 29, h: 34, big: true },
+  { x: 110, y: 0, w: 29, h: 29, big: true },
+  { x: 141, y: 0, w: 28, h: 26, big: true },
+  { x: 171, y: 0, w: 19, h: 31, big: true },
+  { x: 192, y: 0, w: 23, h: 27, big: true },
+  { x: 217, y: 0, w: 20, h: 21, big: false },
+  { x: 239, y: 0, w: 16, h: 18, big: false },
+  { x: 257, y: 0, w: 15, h: 16, big: false },
+  { x: 274, y: 0, w: 16, h: 16, big: false },
+  { x: 292, y: 0, w: 15, h: 15, big: false },
+  { x: 309, y: 0, w: 14, h: 14, big: false },
+  { x: 325, y: 0, w: 14, h: 14, big: false },
+  { x: 341, y: 0, w: 13, h: 14, big: false },
+  { x: 356, y: 0, w: 14, h: 13, big: false },
+]
 // 마지막 정타 후 이 시간이 지나면 차지가 서서히 줄어듦 (초당 DECAY_PER_SEC hit)
 export const FEVER_CHARGE_DECAY_DELAY_MS = 1000
 export const FEVER_CHARGE_DECAY_PER_SEC = 2

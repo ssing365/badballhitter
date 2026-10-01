@@ -1,4 +1,4 @@
-import { COLOR_BALL_FILES, WATERMELON_IMAGE } from '../components/constants'
+import { COLOR_BALL_FILES, WATERMELON_IMAGE, MELON_SHARDS_IMAGE } from '../components/constants'
 
 // 게임 화면에서 쓰는 이미지 — 타이틀에서 미리 받아둬서 첫 게임부터 바로 보이게
 export const GAME_IMAGES = [
@@ -11,6 +11,7 @@ export const GAME_IMAGES = [
   ...COLOR_BALL_FILES.map((name) => `/assets/balls/${name}.png`),
   ...['white', ...COLOR_BALL_FILES].map((name) => `/assets/balls/fever_${name}.png`),
   WATERMELON_IMAGE,
+  MELON_SHARDS_IMAGE,
 ]
 
 // 이미지 한 장 로드 + 디코드 (실패해도 resolve — 로딩 실패로 게임이 막히지 않게)

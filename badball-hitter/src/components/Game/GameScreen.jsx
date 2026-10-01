@@ -8,6 +8,7 @@ import {
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
+  MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
   playHitSfx, playFeverHitSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
@@ -44,6 +45,23 @@ const timerLevelAt = (elapsedMs) => GRADE_TIMER_LEVEL[getHitGrade(elapsedMs).id]
 
 // 정타 궤적 2종 중 랜덤 (CSS .v0 / .v1)
 const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
+
+// 수박 파편 — 큰 조각 3개 + 씨·과즙 3개를 랜덤으로 골라 사방으로 흩뿌림 (매번 방향·회전이 다름)
+const SHARD_SCALE = 0.6
+const pickRandom = (list, n) => [...list].sort(() => Math.random() - 0.5).slice(0, n)
+const randomMelonShards = () => {
+  const picked = [
+    ...pickRandom(MELON_SHARDS.filter((sh) => sh.big), 3),
+    ...pickRandom(MELON_SHARDS.filter((sh) => !sh.big), 3),
+  ]
+  const slots = pickRandom([0, 1, 2, 3, 4, 5], 6)
+  return picked.map((sh, i) => {
+    const angle = ((slots[i] * 60 + Math.random() * 30 - 15) * Math.PI) / 180
+    const dist = (sh.big ? 30 : 42) + Math.random() * 18
+    const spin = (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 240)
+    return { ...sh, dx: Math.round(Math.cos(angle) * dist), dy: Math.round(Math.sin(angle) * dist), spin: Math.round(spin) }
+  })
+}
 
 // 대기열을 채우는 유틸 (dir은 pitchDirs에서 항상 조회 — 큐에 방향을 고정 저장하지 않음)
 // melonRef: 남은 수박 수 — 있으면 새로 채우는 공을 수박으로 (대기열 뒤에서 들어옴)
@@ -500,7 +518,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
       triggerSwing(dir)
       const nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
       const newScore = curScore + WATERMELON_POINTS
-      setFlyBalls((balls) => [...balls, { kind: 'hit', dir, pitch: curQueue[0], variant: randomHitVariant() }])
+      setFlyBalls((balls) => [
+        ...balls,
+        { kind: 'hit', dir, pitch: curQueue[0], variant: randomHitVariant() },
+        { kind: 'shards', pitch: curQueue[0], shards: randomMelonShards() },
+      ])
       setQueue(nextQueue)
       setScore(newScore)
       showScorePop(`+${WATERMELON_POINTS}`)
@@ -1007,7 +1029,33 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
       {/* 처리된 공 연출 — 몸쪽으로 오는 공이 타자·버튼 위로 보이도록 레인 밖 별도 레이어 */}
       <div className="fly-layer">
-        {flyBalls.map((fb) => (
+        {flyBalls.map((fb) => fb.kind === 'shards' ? (
+          // 수박 파편 — 맨 앞 공 자리에서 흩어짐 (자식 애니메이션 끝 이벤트는 무시)
+          <div
+            key={`shards-${fb.pitch.uid}`}
+            className="melon-shards"
+            onAnimationEnd={(e) => {
+              if (e.target === e.currentTarget) setFlyBalls((balls) => balls.filter((b) => b !== fb))
+            }}
+          >
+            {fb.shards.map((sh, i) => (
+              <span
+                key={i}
+                className="shard"
+                style={{
+                  width: sh.w * SHARD_SCALE,
+                  height: sh.h * SHARD_SCALE,
+                  backgroundImage: `url(${MELON_SHARDS_IMAGE})`,
+                  backgroundSize: `${MELON_SHARDS_SIZE[0] * SHARD_SCALE}px ${MELON_SHARDS_SIZE[1] * SHARD_SCALE}px`,
+                  backgroundPosition: `${-sh.x * SHARD_SCALE}px ${-sh.y * SHARD_SCALE}px`,
+                  '--dx': `${sh.dx}px`,
+                  '--dy': `${sh.dy}px`,
+                  '--spin': `${sh.spin}deg`,
+                }}
+              />
+            ))}
+          </div>
+        ) : (
           <div
             key={fb.pitch.uid}
             className={`ball-item-wrap fly-ball fly-${fb.kind}${fb.dir ? `-${fb.dir}` : ''} v${fb.variant ?? 0}${fb.grade ? ` ${fb.grade}` : ''}`}

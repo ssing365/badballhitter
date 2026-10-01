@@ -448,6 +448,37 @@
     filter: drop-shadow(0 0 5px #fde047) drop-shadow(0 0 12px #f97316);
   }
 
+  /* 수박 파편 — 맨 앞 공 자리(공 중심 = 바닥 + 48px×1.3의 절반)에서 사방으로 퍼지며 빙글 돌고 흐려짐
+     컨테이너는 파편보다 살짝 길게 돌고 끝나면 제거 */
+  .melon-shards {
+    position: absolute;
+    left: 50%;
+    bottom: 31px;
+    width: 0;
+    height: 0;
+    animation: shards-life 0.6s linear forwards;
+  }
+
+  @keyframes shards-life {
+    from { opacity: 1; }
+    to   { opacity: 1; }
+  }
+
+  .shard {
+    position: absolute;
+    left: 0; top: 0;
+    translate: -50% -50%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    animation: shard-fly 0.5s cubic-bezier(0.15, 0.7, 0.4, 1) forwards;
+  }
+
+  @keyframes shard-fly {
+    0%   { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
+    55%  { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(var(--spin)) scale(0.9); opacity: 0; }
+  }
+
   /* 헛스윙 — 배트 반대쪽으로 살짝 비켜 타자 몸쪽으로 커지며 지나감 / 시간 초과 — 가운데로 지나감 */
   .fly-miss-left { animation: fly-miss-left 0.3s ease-in forwards; }
   .fly-miss-right { animation: fly-miss-right 0.3s ease-in forwards; }
@@ -1408,6 +1439,7 @@
     .ball-lane .ball-item-wrap { animation: none !important; }
     .swing-trail { display: none !important; }
     .fly-ball { animation: fly-fade 0.15s ease-out forwards !important; }
+    .shard { display: none; }  /* 컨테이너 애니메이션은 남겨 끝나면 제거되게 */
     .scene-fever .dir-btn,
     .tap-badge,
     .fever-title,
