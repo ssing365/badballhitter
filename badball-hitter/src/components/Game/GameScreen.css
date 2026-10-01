@@ -565,6 +565,11 @@
     width: 48px;
     height: 48px;
   }
+
+  /* 수박 — 윤기 나게 은은한 연두빛 */
+  .ball-sprite.melon {
+    filter: drop-shadow(0 0 3px rgba(184, 247, 116, 0.55));
+  }
   
   /* ── 좌/우 힌트 ── */
   /* 높이 0인 세로 중앙 기준점 — 아이템은 --hint-offset 칸만큼 위/아래 배치 */

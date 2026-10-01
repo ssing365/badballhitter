@@ -858,7 +858,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (img) {
       return (
         <div className={`${className} has-img`}>
-          <img src={img} className={`ball-sprite ${size}${feverBall ? ' fever' : ''}`} alt="" draggable={false} />
+          <img src={img} className={`ball-sprite ${size}${feverBall ? ' fever' : ''}${pitch.watermelon ? ' melon' : ''}`} alt="" draggable={false} />
           {goldDelayMs != null && !pitch.watermelon && (
             <img
               src={toFeverBallImage(baseImg)}
