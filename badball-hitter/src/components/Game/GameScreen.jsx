@@ -11,7 +11,7 @@ import {
   MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
-  playHitSfx, playFeverHitSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
+  playHitSfx, playFeverHitSfx, playMelonCrashSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
   isMuted, setMuted,
 } from '../../lib/sound'
 import { haptic, isHapticSupported, isHapticOn, setHapticOn } from '../../lib/haptic'
@@ -513,7 +513,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보·수박 차지·타율 변화 없음)
     if (curQueue[0].watermelon) {
+      // 타격음 + 수박 깨지는 소리 함께
       playFeverHitSfx()
+      playMelonCrashSfx()
       haptic('tickWeak')
       triggerSwing(dir)
       const nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)

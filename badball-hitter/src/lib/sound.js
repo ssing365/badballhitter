@@ -271,6 +271,13 @@ export const playFeverHitSfx = () => {
   feverHit.play()
 }
 
+// 수박 깨지는 소리 2종 중 하나를 랜덤 재생 — 연타 겹침 대비 풀 확장
+const melonCrashes = ['crash_watermelon.wav', 'crash_watermelon2.wav'].map((file) => createSfx(file, 0.7, { pool: 8 }))
+
+export const playMelonCrashSfx = () => {
+  melonCrashes[Math.floor(Math.random() * melonCrashes.length)].play()
+}
+
 // 헛스윙 아웃 — 스윙 바람 소리 + 관중 탄식
 export const playMissSfx = () => {
   sfx.swoosh.play()
