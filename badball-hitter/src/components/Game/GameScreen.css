@@ -570,6 +570,25 @@
   .ball-sprite.melon {
     filter: drop-shadow(0 0 3px rgba(184, 247, 116, 0.55));
   }
+
+  /* 힌트 수박 — 꼭지가 좌우 ±17°로 살짝 끊기듯(편도 6프레임) 흔들리고, 한 번 넘어갈 때마다 콩 뛰어오름 (칸마다 박자를 엇갈림) */
+  .ball-sprite.hint.melon {
+    animation:
+      melon-hop 0.3s steps(2, jump-none) infinite alternate,
+      melon-sway 1.2s steps(6, jump-none) infinite;
+    animation-delay: calc(var(--hint-offset, 0) * -0.15s);
+  }
+
+  @keyframes melon-hop {
+    from { translate: 0 0; }
+    to   { translate: 0 -2px; }
+  }
+
+  /* alternate로 되감으면 이징이 뒤집혀 한쪽에 오래 머묾 — 왕복을 한 주기에 넣어 양쪽 같은 박자로 */
+  @keyframes melon-sway {
+    0%, 100% { rotate: -17deg; }
+    50%      { rotate: 17deg; }
+  }
   
   /* ── 좌/우 힌트 ── */
   /* 높이 0인 세로 중앙 기준점 — 아이템은 --hint-offset 칸만큼 위/아래 배치 */
@@ -1364,6 +1383,7 @@
     .swing-trail,
     .batter-wrap.charging,
     .ball-sprite.gold-in,
+    .ball-sprite.hint.melon,
     .timer-num.fever-sec,
     .game-screen.grand-slam,
     .ball-lane .ball-item-wrap { animation: none !important; }
