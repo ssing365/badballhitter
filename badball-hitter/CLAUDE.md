@@ -28,7 +28,7 @@ badball-hitter/
 │   │   └── balls/
 │   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
-│   │       ├── watermelon.png    # 수박 연타 공 (`scripts/gen-watermelon.py`로 코드 생성 — 36칸 픽셀아트 ×4 = 144px, 14색)
+│   │       ├── watermelon.png    # 수박 연타 공 (144px, 원본 assets-src/balls/watermelon_144.png를 `scripts/brighten-watermelon.py`로 밝은 초록으로 다시 칠함)
 │   │       ├── fever_<색>.png    # 피버 중 금테 공 (white/blue/green/purple/red/nurcle, 원본 assets-src/balls/, 192px)
 │   │       └── feverball.png     # (미사용)
 │   └── sounds/
