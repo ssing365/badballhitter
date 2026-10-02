@@ -531,6 +531,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       playMelonCrashSfx()
       haptic('tickWeak')
       triggerSwing(dir)
+      setPitcherThrowing(true)
+      setTimeout(() => setPitcherThrowing(false), 250)
       const nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
       const newScore = curScore + WATERMELON_POINTS
       setFlyBalls((balls) => [
