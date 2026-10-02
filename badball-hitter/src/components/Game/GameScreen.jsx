@@ -262,15 +262,17 @@ export default function GameScreen({ onGameOver, onQuit }) {
   }, [])
 
   // ── 수박 — 차지 가득이면 다음 공들을 수박으로, 다 처리되면 차지 초기화 ──
-  const startWatermelons = useCallback(() => {
+  const startWatermelons = () => {
     melonActiveRef.current = true
     melonPendingRef.current = WATERMELON_MIN + Math.floor(Math.random() * (WATERMELON_MAX - WATERMELON_MIN + 1))
-    setTimeout(() => {
-      if (!melonActiveRef.current) return  // 그 사이 피버로 취소됨
-      showPop('WATERMELON!', 'melon')
-      playSfx('newBall')
-    }, 300)
-  }, [showPop])
+  }
+
+  // 첫 수박이 맨 앞에 오는 순간 WATERMELON! 팝업
+  const announceMelonFront = (prevQueue, nextQueue) => {
+    if (prevQueue[0]?.watermelon || !nextQueue[0]?.watermelon) return
+    showPop('WATERMELON!', 'melon')
+    playSfx('newBall')
+  }
 
   const checkMelonEnd = (nextQueue) => {
     if (melonActiveRef.current && melonPendingRef.current === 0 && !nextQueue.some((b) => b.watermelon)) {
@@ -496,6 +498,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const next = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
     setQueue(next)
     stateRef.current = { ...stateRef.current, combo: 0, outs: newOuts, queue: next }
+    announceMelonFront(curQueue, next)
     checkMelonEnd(next)
     startTimer()
   }, [showPop, startTimer, handleGameOver])
@@ -671,8 +674,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
       feverActiveRef.current || feverPendingRef.current ? null : melonPendingRef)
     setQueue(next)
     stateRef.current = { ...stateRef.current, ...patch, queue: next }
+    announceMelonFront(curQueue, next)
     startTimer()
-  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, startWatermelons, handleGameOver, startTimer, triggerSwing])
+  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, handleGameOver, startTimer, triggerSwing])
 
   // ── 버튼·키 누름/뗌 — 누르고 있는 입력을 기록 (준비 끝날 때 누르고 있으면 충전 시작) ──
   const press = useCallback((id, dir) => {
