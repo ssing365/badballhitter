@@ -112,7 +112,11 @@
     align-items: center;
     gap: 4px;
     pointer-events: none;
+    transition: top 0.2s ease-out;
   }
+
+  /* 피버 제목(CHANCE! / GRAND SLAM)이 떠 있는 동안 — 제목 아래로 비켜남 */
+  .center-combo.below-title { top: 35%; }
 
   /* 뒤에 은은한 어두운 그림자 — 배경 위에서도 숫자가 또렷하게 */
   .center-combo::before {
@@ -1471,6 +1475,7 @@
 
   /* 모션 줄이기: 흔들림·깜빡임·반복 모션 끔 */
   @media (prefers-reduced-motion: reduce) {
+    .center-combo { transition: none; }
     .pitcher-body,
     .batter-wrap,
     .batter-sprite,

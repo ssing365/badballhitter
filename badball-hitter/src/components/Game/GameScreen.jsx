@@ -944,6 +944,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // 10콤보마다 콤보 숫자 스타일 단계 상승 (최대 5)
   const comboLevel = Math.min(Math.floor(combo / 10), 5)
+  // 피버 제목(CHANCE! / GRAND SLAM)이 떠 있는 동안 — 콤보는 제목 아래로 비켜남
+  const feverTitleOn = grandSlam || (fever && feverReady)
   const scoreText = score.toLocaleString()
 
   // 힌트 아이템 — 중앙 기준 오프셋으로 배치 (새 공이 위에 추가되면 기존 공이 내려감)
@@ -1010,9 +1012,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 피버 내내 — 투수·타자·공·방망이·버튼만 남기고 배경 살짝 어둡게 (끝나면 서서히 밝아짐) */}
       <div className={`fever-dim${fever ? ' on' : ''}`} />
 
-      {/* 중앙 콤보 — 피버 중엔 숨김 (남은 초는 파워 버튼 우측 위) */}
-      {!fever && combo > 0 && (
-        <div className="center-combo">
+      {/* 중앙 콤보 — 피버 중에도 항상 표시, 피버 제목이 떠 있는 동안엔 그 아래로 */}
+      {combo > 0 && (
+        <div className={`center-combo${feverTitleOn ? ' below-title' : ''}`}>
           <span className="center-label">COMBO</span>
           <div className={`center-num combo-lv-${comboLevel}`}>
             <span key={combo} className="combo-num">{combo}</span>
@@ -1169,7 +1171,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
             <span className="btn-fill" aria-hidden="true" />
             {/* 짧게 누를 때마다 글씨가 다시 흔들리도록 key (버튼 자체는 누르는 중 리마운트되면 안 됨) */}
             <span key={shortTapId} className="power-btn-label">
-              {powerCharging || powerSwinging ? `${powerPct}%` : shortTapId ? '더 길게 꾹!' : '꾹 누르세요'}
+              {powerCharging || powerSwinging ? `${powerPct}%` : shortTapId ? '더 길게 꾹!' : '꾹 누르세요!'}
             </span>
           </button>
         )}
@@ -1197,7 +1199,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
       {/* 피버 — 준비 중 CHANCE!, 스윙하면 GRAND SLAM (피버가 끝나도 잠깐 유지) */}
       {fever && <div className="fever-overlay" />}
-      {(grandSlam || (fever && feverReady)) && (
+      {feverTitleOn && (
         <div className="fever-ui">
           {grandSlam ? (
             <div className="fever-title grand-slam">

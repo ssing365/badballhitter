@@ -171,7 +171,7 @@ stopBgm()
 - `.game-screen`은 `container-type: size` — 자식에서 `cqh` 단위 사용 (배경이 높이 기준 cover라 배경 위치 맞출 때 유용)
 - 점수: 배경 전광판 화면 위 `.scoreboard` (top 15.3cqh, 23.8×7cqh, 앰버 LED 픽셀 폰트)
 - 우상단 HUD: 일시정지 버튼 (`.pause-btn`)
-- 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중엔 숨김
+- 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에도 표시 — CHANCE!/GRAND SLAM이 떠 있는 동안엔 제목 아래 top 35%로 비켜남(`.below-title`)
 - 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 42%, `showPop(text, tone)`) — `new` 보라~핑크 그라데이션 + 빛줄기, `bad` 22px 빨강→검붉은 그라데이션 + 검은 그림자, 등장 후 축 처짐
 - 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
 - 공 레인: width 54px, 중앙 세로, top 13% ~ bottom `calc(25% + 48px)` (타이머 위에서 끝남)
