@@ -527,7 +527,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (curQueue.length === 0) return
     cancelAnimationFrame(timerRaf.current)
 
-    // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보·수박 차지·타율 변화 없음)
+    // 수박 — 좌우 구분 없이 치면 깨짐 (타이머는 평소처럼, 콤보 +1, 수박 차지·타율 변화 없음)
     if (curQueue[0].watermelon) {
       // 타격음 + 수박 깨지는 소리 함께
       playFeverHitSfx()
@@ -538,6 +538,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       setTimeout(() => setPitcherThrowing(false), 250)
       const nextQueue = buildQueue(curQueue.slice(1), curUnlockStep, curPitchDirs, melonPendingRef)
       const newScore = curScore + WATERMELON_POINTS
+      const newCombo = curCombo + 1
+      const newMax = Math.max(newCombo, curMax)
       setFlyBalls((balls) => [
         ...balls,
         { kind: 'hit', dir, pitch: curQueue[0], variant: randomHitVariant() },
@@ -545,9 +547,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
       ])
       setQueue(nextQueue)
       setScore(newScore)
+      setCombo(newCombo)
+      setMaxCombo(newMax)
       showScorePop(`+${WATERMELON_POINTS}`)
       lastHitAtRef.current = performance.now()  // 수박 치는 동안 피버 차지가 줄지 않게
-      stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore }
+      stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore, combo: newCombo, maxCombo: newMax }
       checkMelonEnd(nextQueue)
       // 수박도 피버 차지 +1 — 가득 차면 피버 (피버가 오면 남은 수박은 사라짐)
       chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
