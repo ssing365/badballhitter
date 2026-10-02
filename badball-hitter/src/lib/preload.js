@@ -4,6 +4,7 @@ import { COLOR_BALL_FILES, WATERMELON_IMAGE, MELON_SHARDS_IMAGE } from '../compo
 export const GAME_IMAGES = [
   '/assets/bg.jpg',
   '/assets/pitcher_idle.png',
+  '/assets/feverpitcher.png',
   '/assets/batter_idle.png',
   '/assets/batter_swing_l.png',
   '/assets/batter_swing_r.png',
