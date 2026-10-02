@@ -211,10 +211,10 @@ export default function GameResult({ stats, onRetry, onHome }) {
             <div key={r.id} className={`box-row${done || i <= stage ? ' lit' : ''}`}>
               <span className="box-label">
                 {r.label}
-                {r.avg && (
+                {r.badge && (
                   <span className="box-avg">
-                    <span className="box-avg-label">AVG</span>
-                    {r.avg}
+                    <span className="box-avg-label">{r.badge.label}</span>
+                    {r.badge.value}
                   </span>
                 )}
               </span>

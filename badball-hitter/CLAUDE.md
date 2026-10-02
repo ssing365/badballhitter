@@ -124,14 +124,15 @@ badball-hitter/
 - **등급(GRADES)**: 게임 종료 시 해금 구종 수 기준 — 6개 SSS(Hall of Famer) / 5개 S(All-Star) / 4개 A(Starting Lineup) / 3개 B(Bench Warmer) / 2개 C(Minor Leaguer) (`getGrade(unlockStep)`)
 
 ### 최종 점수 (결과 화면)
-- **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
-- Power Swing 점수(날린 공 `× POWER_BALL_POINTS`)와 홈런 타구 점수(`homeRunPtsRef` 누적)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리 표시
-- Hits 행 옆 타율(AVG)은 LED 배지(`.box-avg`)로 강조
+- **최종 점수** = 인게임 점수 + Max Combo 보너스(`maxCombo × 100`) + Bat Speed 보너스(`max(0, mph − 50) × hits`) — `calcFinalBreakdown(stats)`가 BOX SCORE 행과 `finalScore` 반환
+- **Bat Speed**: 일반 모드 정타 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정타 0개면 `null`
+- 홈런 타구 점수(`homeRunPtsRef` 누적)와 파워 스윙 점수(날린 공 `× POWER_BALL_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리해 Home Run 행에 표시
+- 행 옆 LED 배지(`.box-avg`, 행의 `badge`): Hits 옆 타율(AVG), Home Run 옆 그랜드슬램(파워 스윙) 횟수(`grandSlamsRef`)
 - 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P
-- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Home Run / Power Swing / Max Combo)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
+- 전광판 `FINAL SCORE` → BOX SCORE 행(Hits+AVG / Home Run+GRAND SLAM / Max Combo / Bat Speed)이 하나씩 켜지며 점수 카운트업 (rAF + easeOutCubic). 탭/Enter/Space로 스킵, reduced-motion이면 즉시 완료
 - 완료 후 등급 도장 + 해금 공 6칸, 신기록이면 `NEW BEST SCORE` 배너, 아니면 FINAL SCORE 아래 매달린 BEST 전광판
 - 버튼: `Play again!`(Press Start 2P 16px, 가운데 넓게) 아래 줄에 메인화면 · 공유하기(Galmuri14 14px)
 
@@ -201,7 +202,7 @@ scores (id uuid, nickname text, team_id text, score int,
 ```
 - RLS: scores INSERT 누구나, SELECT 전체 공개
 - `src/lib/supabase.js` 파일 생성해서 연동
-- `onGameOver` stats: `{ score, correct, classified, maxCombo, powerBalls, homeRuns, homeRunPts, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
+- `onGameOver` stats: `{ score, correct, classified, maxCombo, powerBalls, homeRuns, homeRunPts, grandSlams, batSpeed, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
 - 컴포넌트: PascalCase (`GameScreen.jsx`), 화면별 폴더 (`Game/`, `Title/`)

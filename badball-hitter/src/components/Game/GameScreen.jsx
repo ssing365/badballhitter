@@ -4,7 +4,7 @@ import {
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
   PITCH_UNLOCK_ORDER, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, toFeverBallImage,
-  POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, SHORT_TAP_HINT_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
+  calcBatSpeed, POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, SHORT_TAP_HINT_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
@@ -143,6 +143,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const hitLabelTimeout = useRef(null)
   const hrFlashTimeout = useRef(null)
   const homeRunPtsRef = useRef(0)  // 홈런 타구로 얻은 점수 누적 (결과 화면 Home Run 행)
+  const grandSlamsRef = useRef(0)  // 파워 스윙(그랜드슬램) 횟수 (결과 화면 Home Run 행 배지)
+  const reactionRef = useRef({ sum: 0, count: 0 })  // 정타 스윙 반응시간 누적 (결과 화면 Bat Speed)
   const gradeBonusRef = useRef(0)  // 타격 등급 배율로 더해진(파울은 깎인) 점수 누적 — 해금 판정에서 제외
 
   // ── 피버 차지 (0~FEVER_CHARGE_MAX, 소수 — 입력 없으면 서서히 감소) ──
@@ -336,6 +338,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const { score: curScore, powerBalls: curBalls } = stateRef.current
     const pts = balls * POWER_BALL_POINTS
     const newScore = curScore + pts
+    grandSlamsRef.current += 1
     const newBalls = curBalls + balls
     setScore(newScore)
     setPowerBalls(newBalls)
@@ -472,6 +475,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
         homeRuns: s.homeRuns,
         unlockStep: s.unlockStep,
         homeRunPts: homeRunPtsRef.current,
+        grandSlams: grandSlamsRef.current,
+        batSpeed: reactionRef.current.count > 0 ? calcBatSpeed(reactionRef.current.sum / reactionRef.current.count) : null,
         pitchBallImages,
       })
     }, 400)
@@ -595,6 +600,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       const pts = Math.round(basePts * hitGrade.mult)
       const newScore = curScore + pts
       gradeBonusRef.current += pts - basePts
+      reactionRef.current.sum += reactionMs
+      reactionRef.current.count += 1
       const newCorrect = curCrt + 1
 
       setCombo(newCombo)

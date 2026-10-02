@@ -196,22 +196,34 @@ export const getGrade = (unlockStep) => GRADES.find((g) => unlockStep >= g.step)
 // ─────────────────────────────────────────
 export const POWER_BALL_POINTS = 300
 export const COMBO_BONUS_PER = 100
+export const BAT_SPEED_BASE_MPH = 50
+
+// 정타 스윙 평균 반응시간(ms) → mph (0.4s≈90, 0.8s≈80, 1.2s≈70, 2.0s≈50)
+export const calcBatSpeed = (avgMs) =>
+  Math.min(99, Math.max(40, Math.round(100 - avgMs / 40)))
 
 // 타율 표기 (.875 / 1.000)
 export const formatAvg = (correct, classified) =>
   classified > 0 ? (correct / classified).toFixed(3).replace(/^0/, '') : '.000'
 
 // 결과 스탯표 행 + 최종 점수 (행 점수 합 = 최종 점수)
-export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, powerBalls = 0, homeRuns = 0, homeRunPts = 0 }) => {
+export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, powerBalls = 0, homeRuns = 0, homeRunPts = 0, grandSlams = 0, batSpeed = null }) => {
   const feverPts = powerBalls * POWER_BALL_POINTS
   const rows = [
     {
       id: 'hits', label: 'Hits', value: String(correct),
-      avg: formatAvg(correct, classified), pts: score - feverPts - homeRunPts,  // 수박 점수도 Hits에 포함
+      badge: { label: 'AVG', value: formatAvg(correct, classified) }, pts: score - feverPts - homeRunPts,  // 수박 점수도 Hits에 포함
     },
-    { id: 'homerun', label: 'Home Run',  value: String(homeRuns), pts: homeRunPts },
-    { id: 'fever', label: 'Power Swing', value: String(powerBalls), pts: feverPts },
+    {
+      id: 'homerun', label: 'Home Run', value: String(homeRuns),
+      badge: { label: 'GRAND SLAM', value: String(grandSlams) }, pts: homeRunPts + feverPts,  // 파워 스윙(그랜드슬램) 점수 포함
+    },
     { id: 'combo', label: 'Max Combo',  value: String(maxCombo), pts: maxCombo * COMBO_BONUS_PER },
+    {
+      id: 'speed', label: 'Bat Speed',
+      value: batSpeed != null ? `${batSpeed} mph` : '—',
+      pts: batSpeed != null ? Math.max(0, batSpeed - BAT_SPEED_BASE_MPH) * correct : 0,
+    },
   ]
   const finalScore = rows.reduce((sum, r) => sum + r.pts, 0)
   return { rows, finalScore }
