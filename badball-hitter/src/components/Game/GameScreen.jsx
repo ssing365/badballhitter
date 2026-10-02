@@ -610,7 +610,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
       }
 
       // 구종 해금 (첫 공은 콤보, 이후는 점수 기준) — 배율 보너스를 뺀 점수로 판정해 해금 속도·등급 밸런스 유지
-      const reachedStep = getUnlockStep(curUnlockStep, newCombo, newScore - gradeBonusRef.current)
+      // 수박 타임(차지 가득 ~ 마지막 수박)엔 해금을 미룸 — 끝난 뒤 다음 정타에서 해금
+      const reachedStep = melonActiveRef.current ? curUnlockStep
+        : getUnlockStep(curUnlockStep, newCombo, newScore - gradeBonusRef.current)
       const isUnlocking = reachedStep > curUnlockStep
 
       // 피버 차지 — 가득 차면 발동, 해금과 겹치면 새 구종을 먼저 보여주도록 차지를 되돌려 미룸
