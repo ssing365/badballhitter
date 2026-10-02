@@ -966,7 +966,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   return (
     <div ref={screenRef} className={`game-screen scene-${sceneMood}${paused ? ' paused' : ''}${grandSlam ? ' grand-slam' : ''}`}>
       <Crowd mood={crowdMood} hush={outFlash} />
-      <Fielders mood={sceneMood} />
+      <Fielders mood={sceneMood} melon={melonFront} />
 
       {/* HUD */}
       <div className="hud">

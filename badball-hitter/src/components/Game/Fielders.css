@@ -37,6 +37,12 @@
   user-select: none;
 }
 
+/* feverpitcher.png는 400×400 캔버스라 여백이 큼 — idle과 같은 크기·발 위치로 보정 */
+.fielder-sprite.sweat {
+  scale: 1.42;
+  transform-origin: 50% 86%;
+}
+
 /* 평소: 좌우로 까딱 */
 @keyframes fielder-sway {
   0%  { transform: translateX(0); }
@@ -52,6 +58,14 @@
 @keyframes fielder-run {
   0%  { transform: translateY(0) rotate(-6deg); }
   50% { transform: translateY(-3px) rotate(6deg); }
+}
+
+/* 수박 타임: 땀 흘리며 벌벌 떪 (아웃 환호가 우선) */
+.fielders.melon:not(.fielders-out) .fielder-body { animation: fielder-shiver 0.12s steps(1, end) infinite; }
+
+@keyframes fielder-shiver {
+  0%  { transform: translateX(0) rotate(-1deg); }
+  50% { transform: translateX(1px) rotate(1deg); }
 }
 
 /* 아웃 직후: 환호 점프 */

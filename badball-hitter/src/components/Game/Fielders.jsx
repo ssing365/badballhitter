@@ -8,9 +8,10 @@ const FIELDERS = [
 ]
 
 // mood: 'normal' | 'hype' | 'fever' | 'out' (GameScreen의 sceneMood)
-export default function Fielders({ mood }) {
+// melon: 수박 타임 — 땀 흘리며 벌벌 떪 (아웃 환호가 우선)
+export default function Fielders({ mood, melon = false }) {
   return (
-    <div className={`fielders fielders-${mood}`} aria-hidden="true">
+    <div className={`fielders fielders-${mood}${melon ? ' melon' : ''}`} aria-hidden="true">
       {FIELDERS.map((f) => (
         <div
           key={f.id}
@@ -18,7 +19,12 @@ export default function Fielders({ mood }) {
           style={{ left: `${f.left}%`, top: `${f.top}cqh`, '--delay': `${f.delay}s` }}
         >
           <div className="fielder-body">
-            <img className="fielder-sprite" src="/assets/pitcher_idle.png" alt="" draggable={false} />
+            <img
+              className={`fielder-sprite${melon ? ' sweat' : ''}`}
+              src={melon ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'}
+              alt=""
+              draggable={false}
+            />
           </div>
         </div>
       ))}

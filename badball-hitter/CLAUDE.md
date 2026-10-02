@@ -141,7 +141,7 @@ badball-hitter/
 - **관중**(`Crowd`): `bg.jpg` 관중석을 줄×블록×2명 조각으로 잘라 steps 점프. calm(0~9, 열성팬만) / warm(10~29) / hype(30+) / fever(파도) / 아웃 시 멈춤
 - **투수**: 평소 숨쉬기 / hype 땀(`feverpitcher.png`, `.sweat`로 크기 보정)+떨림 / 피버 물러나며 크게 떨림 / 아웃 콩콩 점프+좌우반전+"HA!" 말풍선
 - **타자**: 홈플레이트보다 20px 우측(`.batter-slot`), 평소 1.15배 / hype 1.25배+주황 오라 / 피버 1.4배+불꽃 오라 / 아웃 흑백+풀죽음. 스윙 궤적(`.swing-trail`, `swingId` key) 평소 흰색 / hype 주황 / 피버 금색
-- **수비수**(`Fielders`, 유격수·2루수 2명, `pitcher_idle.png` 축소 재사용): 피버 바깥으로 도망 / 아웃 환호 점프
+- **수비수**(`Fielders`, 유격수·2루수 2명, `pitcher_idle.png` 축소 재사용): 피버 바깥으로 도망 / 수박 타임(`melon`) 땀 흘리는 그림(`feverpitcher.png`, `.fielder-sprite.sweat`로 크기 보정)으로 벌벌 떪 / 아웃 환호 점프
 - **피버 테두리**: inset box-shadow 3겹 색 순환 + 주황 비네트 + 집중선(`::before` conic-gradient)
 - **아웃**: 화면 흔들림(±4px) + 붉은 비네트(`.out-vignette`)
 - `prefers-reduced-motion`이면 반복 모션·흔들림·깜빡임 끔
