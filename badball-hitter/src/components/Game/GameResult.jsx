@@ -212,7 +212,7 @@ export default function GameResult({ stats, onRetry, onHome }) {
               <span className="box-label">
                 {r.label}
                 {r.badge && (
-                  <span className="box-avg">
+                  <span className={`box-avg box-badge-${r.id}`}>
                     <span className="box-avg-label">{r.badge.label}</span>
                     {r.badge.value}
                   </span>

@@ -203,6 +203,12 @@
   text-shadow: none;
 }
 
+/* 그랜드슬램 — 타율보다 한 단계 약하게 (테두리 없음, 숫자 작게) */
+.box-badge-homerun {
+  border: none;
+  font-size: 8px;
+}
+
 .box-value {
   font-family: var(--pixel-font);
   font-size: 11px;
