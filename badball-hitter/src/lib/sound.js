@@ -212,6 +212,7 @@ const sfx = {
   fever: createSfx('fevertime.wav', 0.7),
   feverCrowd: createSfx('crowd-cheering.wav', 0.6),
   charge: createSfx('charge.wav', 0.7), // 피버 파워 충전 (꾹 누르는 동안)
+  fullSwing: createSfx('grandslam swoosh.wav', 0.8), // 100% 파워 스윙
   scoreboard: createSfx('scoreboard.wav', 0.7),
   scoreboardSoft: createSfx('scoreboard.wav', 0.3), // 피버 준비(READY) — 작게
   stamp: createSfx('stamp.mp3', 0.8),

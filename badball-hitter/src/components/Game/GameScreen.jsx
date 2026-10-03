@@ -46,6 +46,8 @@ const timerLevelAt = (elapsedMs) => GRADE_TIMER_LEVEL[getHitGrade(elapsedMs).id]
 // 피버 충전음 — 파워 가득일 때 재생 속도(음 높이), 스윙 시 페이드아웃 길이
 const CHARGE_SFX_MAX_RATE = 1.3
 const CHARGE_SFX_FADE_MS = 350
+// 100% 스윙 소리는 스윙보다 이만큼 먼저 재생 — 이때부터는 100% 확정(떼도 가득 찰 때 자동 스윙)
+const FULL_SWING_LEAD_MS = 300
 
 // 정타 궤적 2종 중 랜덤 (CSS .v0 / .v1)
 const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
@@ -176,6 +178,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   // ── 파워 스윙 (피버) ──
   const powerStartRef = useRef(null)      // 누르기 시작한 시각 (null = 안 누르는 중)
   const powerSwungRef = useRef(false)     // 이번 피버에서 이미 스윙함
+  const fullSwingCuedRef = useRef(false)  // 100% 스윙 확정 — swoosh 재생됨
   const powerPctRef = useRef(0)
   const feverReadyRef = useRef(false)     // 준비 시간 중 (끝나는 순간 누르고 있으면 충전 시작)
   const feverReadyUntilRef = useRef(0)    // 이 시각 전까지 피버 입력 무시 (준비 시간)
@@ -364,6 +367,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     setPowerCharging(true)
     clearTimeout(shortTapTimeout.current)
     setShortTapId(0)
+    fullSwingCuedRef.current = false
     setSfxRate('charge', 1)
     playSfx('charge')
     haptic('tickWeak')
@@ -427,7 +431,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
     const tick = () => {
       const left = feverEndAtRef.current - performance.now()
       setFeverCountdown(Math.min(FEVER_DURATION, Math.max(0, Math.ceil(left / 1000))))
-      if (left <= 0) powerSwing('right')  // 시간 끝 — 그 시점 파워로 자동 스윙
+      // 시간 끝 — 그 시점 파워로 자동 스윙 (100% 확정이면 가득 찰 때까지 기다림)
+      if (left <= 0 && !fullSwingCuedRef.current) powerSwing('right')
     }
     tick()
     feverTimer.current = setInterval(tick, 100)
@@ -449,6 +454,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     setFever(true)
     powerStartRef.current = null
     powerSwungRef.current = false
+    fullSwingCuedRef.current = false
     powerHeldMsRef.current = 0
     powerPctRef.current = Math.round(POWER_MIN * 100)
     setPowerPct(powerPctRef.current)
@@ -710,6 +716,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     heldInputsRef.current.delete(id)
     if (pausedRef.current) return
     if (!feverActiveRef.current || powerStartRef.current == null) return
+    if (fullSwingCuedRef.current) return  // 100% 확정 — 가득 찰 때 자동 스윙
     if (performance.now() - powerStartRef.current < POWER_TAP_IGNORE_MS) {
       powerStartRef.current = null
       setPowerCharging(false)
@@ -740,6 +747,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     pauseSfx('fever')
     pauseSfx('feverCrowd')
     pauseSfx('charge')
+    pauseSfx('fullSwing')
     duckBgm(true)
   }, [])
 
@@ -754,6 +762,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     resumeSfx('fever')
     resumeSfx('feverCrowd')
     resumeSfx('charge')
+    resumeSfx('fullSwing')
     duckBgm(feverActiveRef.current)
 
     if (feverActiveRef.current) {
@@ -826,6 +835,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
                 setSfxRate('charge', 1 + (CHARGE_SFX_MAX_RATE - 1) * (power - POWER_MIN) / (1 - POWER_MIN))
               }
             }
+            // 가득 차기 FULL_SWING_LEAD_MS 전 — swoosh를 미리 틀고 100% 확정
+            if (!fullSwingCuedRef.current && powerStartRef.current != null
+              && now - powerStartRef.current >= POWER_FULL_MS - FULL_SWING_LEAD_MS) {
+              fullSwingCuedRef.current = true
+              playSfx('fullSwing')
+            }
             if (power >= 1) powerSwingRef.current(lastDirRef.current)  // 가득 차면 바로 스윙
           }
         } else {
@@ -873,6 +888,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       stopSfx('fever')
       stopSfx('feverCrowd')
       stopSfx('charge')
+      stopSfx('fullSwing')
       duckBgm(false)
     }
   }, []) // eslint-disable-line
