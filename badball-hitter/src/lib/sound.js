@@ -211,6 +211,7 @@ const sfx = {
   crowdDisappointment: createSfx('crowd disappointment.wav', 0.6),
   fever: createSfx('fevertime.wav', 0.7),
   feverCrowd: createSfx('crowd-cheering.wav', 0.6),
+  charge: createSfx('charge.wav', 0.7), // 피버 파워 충전 (꾹 누르는 동안)
   scoreboard: createSfx('scoreboard.wav', 0.7),
   scoreboardSoft: createSfx('scoreboard.wav', 0.3), // 피버 준비(READY) — 작게
   stamp: createSfx('stamp.mp3', 0.8),
@@ -229,6 +230,11 @@ const finalScoreDing = createSfx('score-ding_pitch-+12st.wav', 0.8)
 
 export const playSfx = (name) => {
   sfx[name]?.play()
+}
+
+// 효과음 재생 속도(음 높이) — 피버 충전음이 파워에 따라 올라감
+export const setSfxRate = (name, rate) => {
+  sfx[name]?.rate(rate)
 }
 
 // 일시정지로 멈춘 효과음 이름 (pauseSfx/resumeSfx)

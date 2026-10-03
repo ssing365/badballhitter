@@ -11,7 +11,7 @@ import {
   MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
-  playHitSfx, playFeverHitSfx, playMelonCrashSfx, playMissSfx, playSfx, stopSfx, pauseSfx, resumeSfx, duckBgm,
+  playHitSfx, playFeverHitSfx, playMelonCrashSfx, playMissSfx, playSfx, stopSfx, pauseSfx, setSfxRate, resumeSfx, duckBgm,
   isMuted, setMuted,
 } from '../../lib/sound'
 import { haptic, isHapticSupported, isHapticOn, setHapticOn } from '../../lib/haptic'
@@ -42,6 +42,10 @@ const nextBallUid = () => ++ballUid
 // 타이머 바 색 = 지금 치면 받을 타격 등급 (판정과 같은 기준)
 const GRADE_TIMER_LEVEL = { homerun: 'hr', double: 'safe', single: 'warn', foul: 'danger' }
 const timerLevelAt = (elapsedMs) => GRADE_TIMER_LEVEL[getHitGrade(elapsedMs).id]
+
+// 피버 충전음 — 파워 가득일 때 재생 속도(음 높이), 스윙 시 페이드아웃 길이
+const CHARGE_SFX_MAX_RATE = 1.3
+const CHARGE_SFX_FADE_MS = 350
 
 // 정타 궤적 2종 중 랜덤 (CSS .v0 / .v1)
 const randomHitVariant = () => (Math.random() < 0.5 ? 0 : 1)
@@ -360,6 +364,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
     setPowerCharging(true)
     clearTimeout(shortTapTimeout.current)
     setShortTapId(0)
+    setSfxRate('charge', 1)
+    playSfx('charge')
     haptic('tickWeak')
   }
 
@@ -387,6 +393,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     stateRef.current = { ...stateRef.current, queue: [] }
     setPowerCharging(false)
     setPowerSwinging(true)
+    stopSfx('charge', CHARGE_SFX_FADE_MS)  // 타격음 밑으로 천천히 사라짐
     triggerSwing(dir)
     haptic('success')
 
@@ -706,6 +713,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (performance.now() - powerStartRef.current < POWER_TAP_IGNORE_MS) {
       powerStartRef.current = null
       setPowerCharging(false)
+      stopSfx('charge')
       showShortTap()
       return
     }
@@ -731,6 +739,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     }
     pauseSfx('fever')
     pauseSfx('feverCrowd')
+    pauseSfx('charge')
     duckBgm(true)
   }, [])
 
@@ -744,6 +753,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     resumeSfx('fever')
     resumeSfx('feverCrowd')
+    resumeSfx('charge')
     duckBgm(feverActiveRef.current)
 
     if (feverActiveRef.current) {
@@ -811,6 +821,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
             if (pct !== powerPctRef.current) {
               powerPctRef.current = pct
               setPowerPct(pct)
+              // 충전음 음 높이도 파워 따라 올라감 (POWER_MIN → 1배, 가득 → CHARGE_SFX_MAX_RATE배)
+              if (powerStartRef.current != null) {
+                setSfxRate('charge', 1 + (CHARGE_SFX_MAX_RATE - 1) * (power - POWER_MIN) / (1 - POWER_MIN))
+              }
             }
             if (power >= 1) powerSwingRef.current(lastDirRef.current)  // 가득 차면 바로 스윙
           }
@@ -858,6 +872,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       endedRef.current = true
       stopSfx('fever')
       stopSfx('feverCrowd')
+      stopSfx('charge')
       duckBgm(false)
     }
   }, []) // eslint-disable-line
