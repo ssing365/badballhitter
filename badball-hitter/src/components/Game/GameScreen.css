@@ -352,6 +352,36 @@
   /* 아웃 직후: 콩콩 뛰며 좌우 반전으로 약 올리기 */
   .scene-out .pitcher-body { animation: taunt 0.6s steps(1, end) 2; }
 
+  /* 투수 교체 — 기존 투수는 왼쪽으로 콩콩 걸어 나가고, 새 투수는 오른쪽에서 걸어 들어옴 (상황별 모션보다 우선) */
+  .game-screen .pitcher-body.pitcher-out {
+    translate: 0 0;
+    scale: 1;
+    animation: pitcher-walk-out 0.6s steps(6, end) forwards, pitcher-step-left 0.2s steps(1, end) infinite;
+  }
+  .game-screen .pitcher-body.pitcher-in {
+    translate: 0 0;
+    scale: 1;
+    animation: pitcher-walk-in 0.6s steps(6, end) forwards, pitcher-step 0.2s steps(1, end) infinite;
+  }
+
+  @keyframes pitcher-walk-out {
+    from { translate: 0 0; opacity: 1; }
+    to   { translate: -150px 0; opacity: 0; }
+  }
+  @keyframes pitcher-walk-in {
+    from { translate: 150px 0; opacity: 0; }
+    to   { translate: 0 0; opacity: 1; }
+  }
+  /* 걸음 — 한 발씩 콩콩 (퇴장은 왼쪽을 보도록 좌우반전) */
+  @keyframes pitcher-step-left {
+    0%  { transform: scaleX(-1) translateY(0); }
+    50% { transform: scaleX(-1) translateY(-3px); }
+  }
+  @keyframes pitcher-step {
+    0%  { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
   .pitcher-taunt {
     position: absolute;
     bottom: calc(100% - 6px);
@@ -552,6 +582,13 @@
     0%   { transform: translateX(-50%) scale(var(--ball-scale)); opacity: 1; }
     60%  { opacity: 1; }
     100% { transform: translate(-50%, 150px) scale(2); opacity: 0; }
+  }
+
+  /* 투수 교체 — 레인 공이 투수 쪽으로 올라가며 사라짐 */
+  .ball-lane.recall .ball-item-wrap { animation: lane-recall 0.3s ease-in forwards; }
+
+  @keyframes lane-recall {
+    to { translate: 0 -24px; opacity: 0; }
   }
 
   @keyframes fly-fade {

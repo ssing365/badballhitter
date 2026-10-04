@@ -95,6 +95,10 @@ export const assignDirsForStep = (step, existingDirs = {}) => {
 
 // 투수 교체 — 6구종 모두 해금 후 이 점수(배율 보너스 제외)에 한 번, 좌/우를 3:3으로 새로 섞음
 export const PITCHER_CHANGE_SCORE = 200000
+// 교체 연출 — 레인 공 회수(RECALL) → 기존 투수 퇴장(WALK) → 새 투수 등장(WALK) → 대기열 다시 채우기(CHANGE_MS부터)
+export const PITCHER_RECALL_MS = 300
+export const PITCHER_WALK_MS = 600
+export const PITCHER_CHANGE_MS = 1300
 
 export const shuffleAllDirs = (prevDirs) => {
   const ids = getUnlockedPitchIds(PITCH_UNLOCKS.length)

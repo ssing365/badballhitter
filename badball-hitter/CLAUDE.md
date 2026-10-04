@@ -22,6 +22,7 @@ badball-hitter/
 │   │   ├── bg.png                # 타이틀/게임 배경
 │   │   ├── pitcher_idle.png
 │   │   ├── feverpitcher.png      # 땀 흘리는 투수 (30콤보+/피버)
+│   │   ├── pitcher_second.png    # 투수 교체 후 새 투수 (흰 유니폼, 원본 assets-src/second_pitcher.png를 `scripts/make-second-pitcher.py`가 pitcher_idle과 같은 165×216 캔버스·크기·발 위치로 맞춤, 땀 그림 없음)
 │   │   ├── batter_idle.png
 │   │   ├── batter_swing_l.png
 │   │   ├── batter_swing_r.png
@@ -88,7 +89,7 @@ badball-hitter/
 | 투수 교체 | 200,000점 (6구종 해금 후, 한 판에 한 번) | 6구종 좌/우를 3:3으로 새로 섞음 (`shuffleAllDirs`, 이전과 같으면 다시) |
 
 - 콤보가 끊겨도 해금된 단계는 유지
-- 투수 교체(`PITCHER_CHANGE_SCORE`, `pitcherChangedRef`): `PITCHER CHANGE!` 팝업 + `newBall` 효과음. 수박 타임·피버 대기 중엔 미루고, 같은 타격에 찬 피버·수박 차지는 해금처럼 되돌려 미룸(`deferCharge`)
+- 투수 교체(`PITCHER_CHANGE_SCORE`, `pitcherChangedRef`, `changePitcher`): `PITCHER CHANGE!` 팝업 + `scoreboard` 효과음. 연출 — 레인 공이 투수 쪽으로 사라짐(`.ball-lane.recall`, `PITCHER_RECALL_MS` 0.3초) → 기존 투수가 왼쪽으로 콩콩 걸어 나감(`.pitcher-body.pitcher-out`) → `PITCHER_WALK_MS`(0.6초)에 새 투수가 오른쪽에서 걸어 들어오며(`.pitcher-in`) 새 좌/우 적용 → `PITCHER_CHANGE_MS`(1.3초)부터 `refillQueue`로 다시 채움(그동안 입력 무시). 새 투수는 `pitcher_second.png`(`pitcherAlt`, 교체 후 계속 유지 — 땀 그림이 없어 30콤보+에도 같은 그림에 떨림만). 개발 모드(`import.meta.env.DEV`)에선 게임 중 C 키로 6구종 해금 + 투수 교체 바로 실행 수박 타임·피버 대기 중엔 미루고, 같은 타격에 찬 피버·수박 차지는 해금처럼 되돌려 미룸(`deferCharge`)
 - 해금 점수 조건은 **타격 등급 배율을 뺀 점수**(`score - gradeBonusRef`)로 판정 — 홈런·2루타 보너스가 해금 속도와 결과 등급을 끌어올리지 않도록
 - 좌/우 힌트: 최신 해금 구종이 맨 위, 각 사이드 세로 중앙 정렬 (`--hint-offset`), 새 공 추가 시 기존 공이 부드럽게 내려감
 
@@ -143,7 +144,7 @@ badball-hitter/
 - `sceneMood` = `'out'`(아웃 후 1.2초, `outFlash`) > `'fever'` > `'hype'`(30콤보+) > `'normal'` → `.game-screen.scene-*` 클래스로 CSS에서 분기
 - 상황별 크기·위치는 CSS 개별 속성(`scale`/`translate`/`rotate`), 반복 모션은 `transform` 애니메이션 — 투수 `throwing` transform과 충돌 방지 (`.pitcher-body`, `.batter-wrap` wrapper)
 - **관중**(`Crowd`): `bg.jpg` 관중석을 줄×블록×2명 조각으로 잘라 steps 점프. calm(0~9, 열성팬만) / warm(10~29) / hype(30+) / fever(파도) / 아웃 시 멈춤
-- **투수**: 평소 숨쉬기 / hype 땀(`feverpitcher.png`, `.sweat`로 크기 보정)+떨림 / 피버 물러나며 크게 떨림 / 아웃 콩콩 점프+좌우반전+"HA!" 말풍선
+- **투수**: 투수 교체 시 퇴장·등장 걸음 + 새 투수 그림(`pitcher_second.png`) / 평소 숨쉬기 / hype 땀(`feverpitcher.png`, `.sweat`로 크기 보정)+떨림 / 피버 물러나며 크게 떨림 / 아웃 콩콩 점프+좌우반전+"HA!" 말풍선
 - **타자**: 홈플레이트보다 20px 우측(`.batter-slot`), 평소 1.15배 / hype 1.25배+주황 오라 / 피버 1.4배+불꽃 오라 / 아웃 흑백+풀죽음. 스윙 궤적(`.swing-trail`, `swingId` key) 평소 흰색 / hype 주황 / 피버 금색
 - **수비수**(`Fielders`, 유격수·2루수 2명, `pitcher_idle.png` 축소 재사용): 피버 바깥으로 도망 / 수박 타임(`melon`) 땀 흘리는 그림(`feverpitcher.png`, `.fielder-sprite.sweat`로 크기 보정)으로 벌벌 떪 / 아웃 환호 점프
 - **피버 테두리**: inset box-shadow 3겹 색 순환 + 주황 비네트 + 집중선(`::before` conic-gradient)

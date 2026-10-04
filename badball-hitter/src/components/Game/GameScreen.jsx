@@ -7,7 +7,8 @@ import {
   calcBatSpeed, POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, SHORT_TAP_HINT_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
-  pickMelonTarget, MELON_FEVER_CHARGE, PITCHER_CHANGE_SCORE, shuffleAllDirs, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
+  pickMelonTarget, MELON_FEVER_CHARGE, PITCHER_CHANGE_SCORE, shuffleAllDirs,
+  PITCHER_RECALL_MS, PITCHER_WALK_MS, PITCHER_CHANGE_MS, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
   MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
@@ -110,6 +111,10 @@ export default function GameScreen({ onGameOver, onQuit }) {
   // ── UI 애니메이션 상태 ──
   const [queue, setQueue] = useState([])
   const [pitcherThrowing, setPitcherThrowing] = useState(false)
+  // 투수 교체 연출 — 'out' 퇴장 / 'in' 등장 / null, 교체 후엔 새 투수 그림(alt)
+  const [pitcherPhase, setPitcherPhase] = useState(null)
+  const [pitcherAlt, setPitcherAlt] = useState(false)
+  const [laneRecall, setLaneRecall] = useState(false)  // 교체 시 레인 공이 투수 쪽으로 사라짐
   const [swingDir, setSwingDir] = useState(null)     // 'left' | 'right' | null
   const [popMsg, setPopMsg] = useState({ id: 0, text: '', tone: '', visible: false })
   // 전광판 옆 +점수 — 정타/피버 합계를 따로 표시 (피버 직후 정타에 묻히지 않게)
@@ -339,6 +344,27 @@ export default function GameScreen({ onGameOver, onQuit }) {
     }
     powerTimeouts.current.push(setTimeout(addBall, delayMs))
   }, [startTimer])
+
+  // ── 투수 교체 연출 — 레인 공 회수 → 기존 투수 퇴장 → 새 투수(다른 유니폼) 등장 + 새 좌/우 → 다시 채우기 ──
+  const changePitcher = useCallback((dirs) => {
+    refillingRef.current = true  // 연출·채우기 동안 입력 무시
+    setLaneRecall(true)
+    setPitcherPhase('out')
+    showPop('PITCHER CHANGE!', 'new')
+    playSfx('scoreboard')
+    powerTimeouts.current.push(setTimeout(() => {
+      setQueue([])
+      setLaneRecall(false)
+    }, PITCHER_RECALL_MS))
+    powerTimeouts.current.push(setTimeout(() => {
+      setPitcherPhase('in')
+      setPitcherAlt(true)
+      setPitchDirs(dirs)
+      stateRef.current = { ...stateRef.current, pitchDirs: dirs }
+    }, PITCHER_WALK_MS))
+    powerTimeouts.current.push(setTimeout(() => setPitcherPhase(null), PITCHER_WALK_MS * 2))
+    refillQueue(PITCHER_CHANGE_MS)
+  }, [refillQueue, showPop])
 
   // ── 피버 종료 — 파워 스윙으로 날린 공 점수를 한 번에 합산 (마지막 공이 발사되는 순간) ──
   const endFever = useCallback((balls) => {
@@ -622,6 +648,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
     let nextUnlockStep = curUnlockStep
     let nextPitchDirs = curPitchDirs
+    let pitcherChangeDirs = null  // 투수 교체 — 새 좌/우 (연출 중간에 적용)
     let patch  // 리렌더 전에 다음 탭이 들어와도 최신 값으로 판정하도록 stateRef에 즉시 반영할 값
 
     if (isCorrect) {
@@ -706,13 +733,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
       if (isPitcherChange) {
         pitcherChangedRef.current = true
-        nextPitchDirs = shuffleAllDirs(curPitchDirs)
-        setPitchDirs(nextPitchDirs)
-        patch = { ...patch, pitchDirs: nextPitchDirs }
-        setTimeout(() => {
-          showPop('PITCHER CHANGE!', 'new')
-          playSfx('newBall')
-        }, 450)
+        pitcherChangeDirs = shuffleAllDirs(curPitchDirs)
       }
     } else {
       const newOuts = curOuts + 1
@@ -733,6 +754,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
       }
     }
 
+    // 투수 교체 — 대기열을 비우고 교체 연출 뒤 새 투수가 다시 채움
+    if (pitcherChangeDirs) {
+      stateRef.current = { ...stateRef.current, ...patch, queue: [] }
+      changePitcher(pitcherChangeDirs)
+      return
+    }
+
     // 대기열 보충 + 다음 공 바로 준비 (기다림 없이 연타 가능) — 피버 중·대기 중엔 수박을 들이지 않음
     const next = buildQueue(curQueue.slice(1), nextUnlockStep, nextPitchDirs,
       feverActiveRef.current || feverPendingRef.current ? null : melonPendingRef)
@@ -740,7 +768,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     stateRef.current = { ...stateRef.current, ...patch, queue: next }
     announceMelonFront(curQueue, next)
     startTimer()
-  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, handleGameOver, startTimer, triggerSwing])
+  }, [showPop, showScorePop, showHitLabel, triggerHrFlash, startFever, handleGameOver, startTimer, triggerSwing, changePitcher])
 
   // ── 버튼·키 누름/뗌 — 누르고 있는 입력을 기록 (준비 끝날 때 누르고 있으면 충전 시작) ──
   const press = useCallback((id, dir) => {
@@ -777,6 +805,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
       feverRemainingRef.current = Math.max(0, feverEndAtRef.current - now)
       clearInterval(feverTimer.current)
       if (powerStartRef.current != null) powerHeldMsRef.current = now - powerStartRef.current
+    } else if (refillingRef.current) {
+      // 대기열 채우는 중(게임 시작·그랜드슬램·투수 교체) — 타이머는 채우기가 끝나면 시작
+      timerResumeRef.current = null
     } else if (!feverPendingRef.current) {
       // 피버 시작 대기 중이 아니면 진행 중인 타이머 — 경과 시간 저장
       cancelAnimationFrame(timerRaf.current)
@@ -909,6 +940,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   // ── 초기화 ──
   useEffect(() => {
     new Image().src = '/assets/feverpitcher.png'  // 30콤보 진입 시 교체 지연 방지
+    new Image().src = '/assets/pitcher_second.png'  // 투수 교체 순간 그림이 늦게 뜨지 않게
     endedRef.current = false  // StrictMode 재마운트 시 이전 cleanup의 종료 표시 해제
     refillQueue(300)  // 투수가 하나씩 던져 채우고 타이머 시작
     return () => {
@@ -939,6 +971,20 @@ export default function GameScreen({ onGameOver, onQuit }) {
     )
     const onKey = (e) => {
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePause(); return }
+      // 개발용 — C: 6구종 모두 해금 + 투수 교체 바로 실행 (배포 빌드에선 빠짐)
+      if (import.meta.env.DEV && (e.key === 'c' || e.key === 'C')) {
+        if (pausedRef.current || refillingRef.current || feverActiveRef.current || feverPendingRef.current
+          || melonActiveRef.current) return
+        const step = PITCH_UNLOCKS.length
+        const dirs = assignDirsForStep(step, stateRef.current.pitchDirs)
+        setUnlockStep(step)
+        setPitchDirs(dirs)
+        stateRef.current = { ...stateRef.current, unlockStep: step, pitchDirs: dirs, queue: [] }
+        cancelAnimationFrame(timerRaf.current)
+        pitcherChangedRef.current = true
+        changePitcher(shuffleAllDirs(dirs))
+        return
+      }
       const dir = keyDir(e.key)
       if (!dir) return
       e.preventDefault()
@@ -954,7 +1000,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [press, release, togglePause])
+  }, [press, release, togglePause, changePitcher])
 
   // ── 활성 구종 힌트 계산 ──
   const activeTypes = getActivePitches(unlockStep, pitchDirs)
@@ -972,7 +1018,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // 30콤보+/피버엔 땀 흘리는 투수
   const pitcherSweat = fever || combo >= 30
-  const pitcherSrc = pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
+  // 교체 후 새 투수는 땀 흘리는 그림이 없어서 항상 같은 그림 (떨림은 CSS 모션으로)
+  const pitcherSrc = pitcherAlt ? '/assets/pitcher_second.png'
+    : pitcherSweat ? '/assets/feverpitcher.png' : '/assets/pitcher_idle.png'
 
   // goldDelayMs: 피버 준비 중 레인 공이 금테 공으로 바뀌는 시점 (뒤쪽 공부터 차례로, 일반 공 위에 겹쳐 서서히 나타남)
   const renderBall = (pitch, className, size = 'lane', feverBall = false, goldDelayMs = null) => {
@@ -1101,9 +1149,9 @@ export default function GameScreen({ onGameOver, onQuit }) {
       {/* 투수 */}
       <div className="pitcher-area">
         {outFlash && <div key={outs} className="pitcher-taunt">HA!</div>}
-        <div className="pitcher-body">
+        <div className={`pitcher-body${pitcherPhase ? ` pitcher-${pitcherPhase}` : ''}`}>
           <img
-            className={`pitcher-sprite${pitcherSweat ? ' sweat' : ''}${pitcherThrowing ? ' throwing' : ''}`}
+            className={`pitcher-sprite${pitcherSweat && !pitcherAlt ? ' sweat' : ''}${pitcherThrowing ? ' throwing' : ''}`}
             src={pitcherSrc}
             alt="투수"
             draggable={false}
@@ -1112,7 +1160,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       </div>
 
       {/* 공 레인 — 피버 중엔 전부 불타는 공 */}
-      <div className={`ball-lane${fever ? ' fever' : ''}`}>
+      <div className={`ball-lane${fever ? ' fever' : ''}${laneRecall ? ' recall' : ''}`}>
         {queue.map((bt, i) => (
           <div
             key={bt.uid}
