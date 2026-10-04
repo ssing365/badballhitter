@@ -11,7 +11,7 @@
 - **Backend/DB**: Supabase (PostgreSQL) — 현재 TODO 상태, 추후 연동
 - **배포**: 앱인토스 (`@apps-in-toss/web-framework` 3.x, `apps-in-toss.config.ts`, `npm run build` → `.ait`) / 웹은 Vercel (`npm run build:web` = `--mode web`, `vercel.json` buildCommand)
 - **분석**: GA(gtag, `vite.config.js` 플러그인)·Vercel Analytics(`App.jsx` lazy)는 `--mode web`에서만 포함 — 앱인토스 번들에는 없음
-- **도메인**: 추후 연결 예정 (공유 텍스트에는 `https://badballhitter.com` 사용 중)
+- **도메인**: 추후 연결 예정 (공유 링크는 `lib/share.js` — 웹은 `https://badballhitter.vercel.app/`, 토스는 토스 공유 링크)
 
 ## 폴더 구조
 ```
@@ -46,6 +46,7 @@ badball-hitter/
 │   │   ├── sound.js          # Howler.js BGM 관리
 │   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시)
 │   │   ├── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
+│   │   ├── share.js          # 공유 링크 — 웹 빌드는 vercel 주소, 토스는 `getTossShareLink('intoss://badball-hitter')`, 실패하면 null(링크 없는 문구). 토스 번들엔 외부 링크 금지(검수)
 │   │   └── haptic.js         # 햅틱(Device.triggerHaptic) + 진동 on/off(localStorage `hapticOff`), 토스 웹뷰 밖이면 no-op
 │   ├── assets/icons/         # 마스크용 svg (volume / volume-xmark / vibrate / vibrate-off)
 │   └── components/
@@ -128,7 +129,7 @@ badball-hitter/
 - **Bat Speed**: 일반 모드 정타 스윙의 평균 반응시간(공 준비~스윙, `reactionRef`) → `calcBatSpeed(avgMs) = clamp(round(100 - avgMs/40), 40, 99)` mph. 정타 0개면 `null`
 - 홈런 타구 점수(`homeRunPtsRef` 누적)와 파워 스윙 점수(날린 공 `× POWER_BALL_POINTS`)는 이미 인게임 점수에 포함 → 표에서만 Hits와 분리해 Home Run 행에 표시
 - 행 옆 LED 배지(`.box-avg`, 행의 `badge`): Hits 옆 타율(AVG), Home Run 옆 그랜드슬램(파워 스윙) 횟수(`grandSlamsRef`)
-- 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략)
+- 최고 기록(`lib/records.js`, 키 `bestScore`)은 `finalScore` 기준. 결과 화면 진입 시 개인 최고 점수를 리더보드에 제출. 신기록 시 그 판의 `unlockStep`도 `bestUnlockStep`에 저장. Share(클립보드 복사) 문구는 개인 최고 점수+등급 기준 (`bestUnlockStep` 없는 예전 기록은 등급 생략). 링크는 결과 화면 진입 시 미리 받아둠 — iOS는 탭 직후 동기로 복사해야 해서
 
 ### 결과 화면 (GameResult)
 - 타이틀과 같은 `bg.jpg` + 스크림, 헤더 Bebas Neue, 숫자 Press Start 2P

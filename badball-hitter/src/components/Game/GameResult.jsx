@@ -3,12 +3,12 @@ import { getGrade, calcFinalBreakdown, getUnlockedPitchIds, PITCH_UNLOCKS, PITCH
 import { playSfx, playScoreDing, playFinalScoreDing, duckBgm } from '../../lib/sound'
 import { getBestRecord, saveBestRecord } from '../../lib/records'
 import { submitLeaderboardScore } from '../../lib/leaderboard'
+import { getShareUrl } from '../../lib/share'
 import './GameResult.css'
 
 // TODO: Supabase — save score on game over (finalScore 기준)
 // import { saveScore } from '../lib/supabase'
 
-const SHARE_URL = 'https://badballhitter.vercel.app/'
 const TOAST_DURATION_MS = 2000
 
 // 카운트업 연출 — 첫 행(타격 점수)은 길게, 보너스 행은 짧게
@@ -151,14 +151,24 @@ export default function GameResult({ stats, onRetry, onHome }) {
     return () => clearTimeout(id)
   }, [toast])
 
+  // 공유 링크는 미리 받아둠 — 클립보드 복사는 탭 직후 동기로 해야 iOS에서 막히지 않음
+  const [shareUrl, setShareUrl] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    getShareUrl().then((url) => { if (alive) setShareUrl(url) })
+    return () => { alive = false }
+  }, [])
+
   // 네이티브 공유 시트 대신 클립보드 복사만 사용
   const handleShare = () => {
     // 이번 판이 아니라 개인 최고 기록(점수+등급) 기준으로 공유
     const bestText = (best ?? finalScore).toLocaleString('en-US')
     const gradeText = bestGrade ? ` (${bestGrade.grade} ${bestGrade.title})` : ''
+    const linkText = shareUrl ? ` → ${shareUrl}` : ''
     const text = isNewRecord
-      ? `BadBall Hitter 최고 기록 경신! ${bestText}점${gradeText} 달성! 나를 이길 수 있을까? → ${SHARE_URL}`
-      : `BadBall Hitter 내 최고 기록은 ${bestText}점${gradeText}! 나를 이길 수 있을까? → ${SHARE_URL}`
+      ? `BadBall Hitter 최고 기록 경신! ${bestText}점${gradeText} 달성! 나를 이길 수 있을까?${linkText}`
+      : `BadBall Hitter 내 최고 기록은 ${bestText}점${gradeText}! 나를 이길 수 있을까?${linkText}`
     if (!navigator.clipboard) {
       setToast('복사하지 못했어요 😢')
       return
