@@ -447,7 +447,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // ── 피버 시작 ──
   const startFever = useCallback(() => {
-    if (endedRef.current) return
+    if (endedRef.current || feverActiveRef.current) return  // 이미 피버 중이면 무시 (중복 예약 방어)
     if (pausedRef.current) {
       feverOnResumeRef.current = true
       return
@@ -652,7 +652,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
       if (chargeRef.current >= FEVER_CHARGE_MAX) {
         if (isUnlocking) {
           chargeRef.current = FEVER_CHARGE_MAX - FEVER_UNLOCK_DELAY
-        } else {
+        } else if (!feverPendingRef.current) {
           feverPendingRef.current = true
           setTimeout(() => startFever(), 200)
         }
