@@ -280,7 +280,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const announceMelonFront = (prevQueue, nextQueue) => {
     if (prevQueue[0]?.watermelon || !nextQueue[0]?.watermelon) return
     showPop('WATERMELON!', 'melon')
-    playSfx('newBall')
+    playSfx('watermelon')
   }
 
   const checkMelonEnd = (nextQueue) => {
