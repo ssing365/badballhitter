@@ -2,12 +2,12 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react
 import {
   QUEUE_SIZE, TIMER_MAX,
   calcScore, getActivePitches, assignDirsForStep, getUnlockStep, getPitchDir,
-  PITCH_UNLOCK_ORDER, PITCHES,
+  PITCH_UNLOCK_ORDER, PITCH_UNLOCKS, PITCHES,
   FEVER_UNLOCK_DELAY, FEVER_DURATION, createPitchBallImages, getPitchBallImage, toFeverBallImage,
   calcBatSpeed, POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, SHORT_TAP_HINT_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
-  pickMelonTarget, MELON_FEVER_CHARGE, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
+  pickMelonTarget, MELON_FEVER_CHARGE, PITCHER_CHANGE_SCORE, shuffleAllDirs, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
   MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
@@ -151,6 +151,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const homeRunPtsRef = useRef(0)  // 홈런 타구로 얻은 점수 누적 (결과 화면 Home Run 행)
   const grandSlamsRef = useRef(0)  // 파워 스윙(그랜드슬램) 횟수 (결과 화면 Home Run 행 배지)
   const reactionRef = useRef({ sum: 0, count: 0 })  // 정타 스윙 반응시간 누적 (결과 화면 Bat Speed)
+  const pitcherChangedRef = useRef(false)  // 투수 교체는 한 판에 한 번
   const gradeBonusRef = useRef(0)  // 타격 등급 배율로 더해진(파울은 깎인) 점수 누적 — 해금 판정에서 제외
 
   // ── 피버 차지 (0~FEVER_CHARGE_MAX, 소수 — 입력 없으면 서서히 감소) ──
@@ -657,12 +658,18 @@ export default function GameScreen({ onGameOver, onQuit }) {
       const reachedStep = melonActiveRef.current ? curUnlockStep
         : getUnlockStep(curUnlockStep, newCombo, newScore - gradeBonusRef.current)
       const isUnlocking = reachedStep > curUnlockStep
+      // 투수 교체 — 6구종 다 나온 뒤 PITCHER_CHANGE_SCORE에 한 번, 수박·피버 대기 중엔 미룸
+      const isPitcherChange = !isUnlocking && !pitcherChangedRef.current
+        && curUnlockStep === PITCH_UNLOCKS.length && !melonActiveRef.current && !feverPendingRef.current
+        && newScore - gradeBonusRef.current >= PITCHER_CHANGE_SCORE
+      // 새 구종·투수 교체를 먼저 보여주도록 같은 타격에 찬 피버·수박은 미룸
+      const deferCharge = isUnlocking || isPitcherChange
 
       // 피버 차지 — 가득 차면 발동, 해금과 겹치면 새 구종을 먼저 보여주도록 차지를 되돌려 미룸 (피버 바가 생긴 뒤부터)
       if (feverBarOnRef.current) chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
       lastHitAtRef.current = performance.now()
       if (chargeRef.current >= FEVER_CHARGE_MAX) {
-        if (isUnlocking) {
+        if (deferCharge) {
           chargeRef.current = FEVER_CHARGE_MAX - FEVER_UNLOCK_DELAY
         } else if (!feverPendingRef.current) {
           feverPendingRef.current = true
@@ -675,7 +682,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
         const target = cycleTargetRef.current
         cycleChargeRef.current = Math.min(target, cycleChargeRef.current + 1)
         if (cycleChargeRef.current >= target) {
-          if (isUnlocking) cycleChargeRef.current = target - FEVER_UNLOCK_DELAY
+          if (deferCharge) cycleChargeRef.current = target - FEVER_UNLOCK_DELAY
           else if (feverPendingRef.current) cycleChargeRef.current = 0  // 피버와 겹치면 수박 없이 초기화
           else startWatermelons()
         }
@@ -693,6 +700,17 @@ export default function GameScreen({ onGameOver, onQuit }) {
         // 새 구종 팝업과 함께 해금 효과음
         setTimeout(() => {
           showPop(`NEW PITCH!\n${addedLabels.join(', ')}`, 'new')
+          playSfx('newBall')
+        }, 450)
+      }
+
+      if (isPitcherChange) {
+        pitcherChangedRef.current = true
+        nextPitchDirs = shuffleAllDirs(curPitchDirs)
+        setPitchDirs(nextPitchDirs)
+        patch = { ...patch, pitchDirs: nextPitchDirs }
+        setTimeout(() => {
+          showPop('PITCHER CHANGE!', 'new')
           playSfx('newBall')
         }, 450)
       }

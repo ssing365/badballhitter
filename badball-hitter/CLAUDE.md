@@ -85,8 +85,10 @@ badball-hitter/
 | 2 | 60,000점 + 15콤보 | forkball (우) |
 | 3 | 100,000점 + 20콤보 | curve (좌) |
 | 4 | 150,000점 + 25콤보 | sweeper (우) |
+| 투수 교체 | 200,000점 (6구종 해금 후, 한 판에 한 번) | 6구종 좌/우를 3:3으로 새로 섞음 (`shuffleAllDirs`, 이전과 같으면 다시) |
 
 - 콤보가 끊겨도 해금된 단계는 유지
+- 투수 교체(`PITCHER_CHANGE_SCORE`, `pitcherChangedRef`): `PITCHER CHANGE!` 팝업 + `newBall` 효과음. 수박 타임·피버 대기 중엔 미루고, 같은 타격에 찬 피버·수박 차지는 해금처럼 되돌려 미룸(`deferCharge`)
 - 해금 점수 조건은 **타격 등급 배율을 뺀 점수**(`score - gradeBonusRef`)로 판정 — 홈런·2루타 보너스가 해금 속도와 결과 등급을 끌어올리지 않도록
 - 좌/우 힌트: 최신 해금 구종이 맨 위, 각 사이드 세로 중앙 정렬 (`--hint-offset`), 새 공 추가 시 기존 공이 부드럽게 내려감
 
@@ -244,5 +246,4 @@ scores (id uuid, nickname text, team_id text, score int,
 
 ### 버그·기타
 - 쓰리 아웃 시 터치 금지 확인
-- 구종 6개 해금 이후 투수 교체 → 힌트 공 좌우 바뀜 or 랜덤 재배치
 - 랭킹 버튼이 토스 리더보드로 이동되는지 실기기 확인

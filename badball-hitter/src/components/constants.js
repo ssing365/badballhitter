@@ -93,6 +93,19 @@ export const assignDirsForStep = (step, existingDirs = {}) => {
   return dirs
 }
 
+// 투수 교체 — 6구종 모두 해금 후 이 점수(배율 보너스 제외)에 한 번, 좌/우를 3:3으로 새로 섞음
+export const PITCHER_CHANGE_SCORE = 200000
+
+export const shuffleAllDirs = (prevDirs) => {
+  const ids = getUnlockedPitchIds(PITCH_UNLOCKS.length)
+  let dirs
+  do {
+    const shuffled = [...ids].sort(() => Math.random() - 0.5)
+    dirs = Object.fromEntries(shuffled.map((id, i) => [id, i < ids.length / 2 ? 'left' : 'right']))
+  } while (ids.every((id) => dirs[id] === prevDirs[id]))  // 그대로면 다시
+  return dirs
+}
+
 export const getActivePitches = (step, pitchDirs) =>
   getUnlockedPitchIds(step).map((id) => ({
     ...PITCHES[id],
