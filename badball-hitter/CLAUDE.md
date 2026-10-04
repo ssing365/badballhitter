@@ -33,8 +33,8 @@ badball-hitter/
 │   │       ├── fever_<색>.png    # 피버 중 금테 공 (white/blue/green/purple/red/nurcle, 원본 assets-src/balls/, 192px)
 │   │       └── feverball.png     # (미사용)
 │   └── sounds/
-│       ├── Pinball Spring.mp3        # BGM normal (타이틀/결과)
-│       ├── Pinball Spring 160.mp3    # BGM fast (게임 플레이)
+│       ├── Pinball Spring.m4a        # BGM normal (타이틀/결과) — 원본 320kbps mp3는 assets-src/sounds/, 번들용은 `afconvert -f m4af -d aac -b 128000`
+│       ├── Pinball Spring 160.m4a    # BGM fast (게임 플레이)
 │       ├── *fast-swing-air-woosh.wav # 효과음 (미사용)
 │       └── *baseball-into-glove.aiff # 효과음 (미사용)
 ├── src/
@@ -150,8 +150,8 @@ badball-hitter/
 
 ## BGM 전환 로직 (src/lib/sound.js)
 ```js
-playBgm('normal')   // Pinball Spring.mp3, loop — 타이틀/결과
-playBgm('fast')     // Pinball Spring 160.mp3, loop — 게임 플레이
+playBgm('normal')   // Pinball Spring.m4a, loop — 타이틀/결과
+playBgm('fast')     // Pinball Spring 160.m4a, loop — 게임 플레이
 stopBgm()
 ```
 - **크로스페이드 없음** — 다른 트랙은 즉시 stop 후 새 트랙 재생 (fade 레이스 버그 방지 목적)

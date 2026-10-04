@@ -25,14 +25,14 @@ document.addEventListener('visibilitychange', () => {
 
 const tracks = {
   normal: new Howl({
-    src: [encodeURI('/sounds/Pinball Spring.mp3')],
+    src: [encodeURI('/sounds/Pinball Spring.m4a')],
     loop: true,
     volume: BGM_VOLUME,
     preload: true,
     html5: true,
   }),
   fast: new Howl({
-    src: [encodeURI('/sounds/Pinball Spring 160.mp3')],
+    src: [encodeURI('/sounds/Pinball Spring 160.m4a')],
     loop: true,
     volume: BGM_VOLUME,
     preload: true,
