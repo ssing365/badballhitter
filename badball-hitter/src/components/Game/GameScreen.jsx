@@ -414,6 +414,13 @@ export default function GameScreen({ onGameOver, onQuit }) {
         }])
         playFeverHitSfx()
         haptic('tickWeak')
+        // 날아간 공 하나마다 콤보 +1
+        const { combo: curCombo, maxCombo: curMax } = stateRef.current
+        const newCombo = curCombo + 1
+        const newMax = Math.max(newCombo, curMax)
+        setCombo(newCombo)
+        setMaxCombo(newMax)
+        stateRef.current = { ...stateRef.current, combo: newCombo, maxCombo: newMax }
       }, i * POWER_BALL_INTERVAL_MS))
     }
     // 마지막 공이 발사되는 순간 피버 종료 — 바로 대기열 채우기 시작
