@@ -40,10 +40,10 @@ export const BASE_PITCHES = ['fastball', 'slider']
 
 // 이후 1구종씩 해금 — 현재 콤보 AND 누적 점수 조건 (순서대로만 해금)
 export const PITCH_UNLOCKS = [
-  { id: 'changeup', combo: 20, score: 0 },
-  { id: 'forkball', combo: 10, score: 30000 },
-  { id: 'curve',    combo: 15, score: 50000 },
-  { id: 'sweeper',  combo: 20, score: 80000 },
+  { id: 'changeup', combo: 35, score: 0 },
+  { id: 'forkball', combo: 15, score: 60000 },
+  { id: 'curve',    combo: 20, score: 100000 },
+  { id: 'sweeper',  combo: 25, score: 150000 },
 ]
 export const PITCH_UNLOCK_ORDER = PITCH_UNLOCKS.map((u) => u.id)
 
@@ -124,10 +124,22 @@ export const HIT_GRADES = [
 export const getHitGrade = (reactionMs) => HIT_GRADES.find((g) => reactionMs <= g.maxMs)
 
 // 피버 차지 — 정타(파울 포함) 1회당 1씩 참, MAX 도달 시 피버 (아웃 시 절반, 피버 종료 시 0)
-export const FEVER_CHARGE_MAX = 40
+// 첫 수박이 맨 앞에 올 때 피버 바가 생기고 그때부터 쌓임
+export const FEVER_CHARGE_MAX = 50
+export const MELON_FEVER_CHARGE = 0.5  // 수박 1개당 피버 차지
 
-// 수박 차지 — 파울 제외 정타 1회당 1씩 참, MAX 도달 시 다음 공 WATERMELON_MIN~MAX개가 수박 (아웃 시 0)
-export const CYCLE_CHARGE_MAX = 15
+// 수박 차지 — 파울 제외 정타 1회당 1씩 참, 목표에 도달하면 다음 공 WATERMELON_MIN~MAX개가 수박 (아웃 시 0)
+// 목표는 사이클마다 랜덤. 첫 수박은 체인지업 해금 뒤부터 쌓여서 대기열(7개)을 거쳐 해금 후 약 17~20번째 공에 등장
+export const FIRST_MELON_CHARGE_MIN = 10
+export const FIRST_MELON_CHARGE_MAX = 13
+export const MELON_CHARGE_MIN = 20
+export const MELON_CHARGE_MAX = 30
+export const pickMelonTarget = (first) => {
+  const [min, max] = first
+    ? [FIRST_MELON_CHARGE_MIN, FIRST_MELON_CHARGE_MAX]
+    : [MELON_CHARGE_MIN, MELON_CHARGE_MAX]
+  return min + Math.floor(Math.random() * (max - min + 1))
+}
 export const WATERMELON_MIN = 15
 export const WATERMELON_MAX = 20
 export const WATERMELON_POINTS = 100

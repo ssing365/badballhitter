@@ -7,7 +7,7 @@ import {
   calcBatSpeed, POWER_FULL_MS, POWER_MIN, POWER_TAP_IGNORE_MS, SHORT_TAP_HINT_MS, POWER_BALL_INTERVAL_MS, POWER_BALL_POINTS, powerBallCount, getHitGrade,
   FEVER_READY_MS, PITCHER_REST_MS, QUEUE_REFILL_INTERVAL_MS,
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
-  CYCLE_CHARGE_MAX, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
+  pickMelonTarget, MELON_FEVER_CHARGE, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
   MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
 } from '../constants'
 import {
@@ -161,9 +161,14 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const gaugeRef = useRef(null)           // 게이지는 매 프레임 DOM 직접 갱신 (리렌더 없이)
   const gaugeFillRef = useRef(null)
   const gaugeRaf = useRef(null)
+  // 피버 바는 첫 수박이 맨 앞에 올 때 생김 — 그 전엔 숨기고 차지도 안 쌓임
+  const [feverBarOn, setFeverBarOn] = useState(false)
+  const feverBarOnRef = useRef(false)
 
-  // ── 수박 차지 (0~CYCLE_CHARGE_MAX) — 가득 차면 다음 공 몇 개가 수박 ──
+  // ── 수박 차지 (0~cycleTargetRef) — 가득 차면 다음 공 몇 개가 수박, 목표는 사이클마다 랜덤 ──
   const cycleChargeRef = useRef(0)
+  const cycleTargetRef = useRef(pickMelonTarget(true))
+  const firstMelonDoneRef = useRef(false)  // 첫 수박이 나왔으면 이후 목표는 더 길게
   const melonPendingRef = useRef(0)       // 아직 대기열에 안 들어온 수박 수
   const melonActiveRef = useRef(false)    // 수박 차지 가득 ~ 마지막 수박 처리까지 (차지 멈춤)
 
@@ -273,6 +278,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
   // ── 수박 — 차지 가득이면 다음 공들을 수박으로, 다 처리되면 차지 초기화 ──
   const startWatermelons = () => {
     melonActiveRef.current = true
+    firstMelonDoneRef.current = true
     melonPendingRef.current = WATERMELON_MIN + Math.floor(Math.random() * (WATERMELON_MAX - WATERMELON_MIN + 1))
   }
 
@@ -281,12 +287,17 @@ export default function GameScreen({ onGameOver, onQuit }) {
     if (prevQueue[0]?.watermelon || !nextQueue[0]?.watermelon) return
     showPop('WATERMELON!', 'melon')
     playSfx('watermelon')
+    if (!feverBarOnRef.current) {
+      feverBarOnRef.current = true
+      setFeverBarOn(true)
+    }
   }
 
   const checkMelonEnd = (nextQueue) => {
     if (melonActiveRef.current && melonPendingRef.current === 0 && !nextQueue.some((b) => b.watermelon)) {
       melonActiveRef.current = false
       cycleChargeRef.current = 0
+      cycleTargetRef.current = pickMelonTarget(false)
     }
   }
 
@@ -295,6 +306,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
     melonPendingRef.current = 0
     melonActiveRef.current = false
     cycleChargeRef.current = 0
+    cycleTargetRef.current = pickMelonTarget(!firstMelonDoneRef.current)
     const { queue: curQueue } = stateRef.current
     if (!curQueue.some((b) => b.watermelon)) return
     const next = curQueue.map((b) => (b.watermelon ? { ...b, watermelon: false } : b))
@@ -578,8 +590,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
       lastHitAtRef.current = performance.now()  // 수박 치는 동안 피버 차지가 줄지 않게
       stateRef.current = { ...stateRef.current, queue: nextQueue, score: newScore, combo: newCombo, maxCombo: newMax }
       checkMelonEnd(nextQueue)
-      // 수박도 피버 차지 +1 — 가득 차면 피버 (피버가 오면 남은 수박은 사라짐)
-      chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
+      // 수박도 피버 차지 (일반 정타의 절반) — 가득 차면 피버 (피버가 오면 남은 수박은 사라짐)
+      chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + MELON_FEVER_CHARGE)
       if (chargeRef.current >= FEVER_CHARGE_MAX && !feverPendingRef.current) {
         feverPendingRef.current = true
         setTimeout(() => startFever(), 200)
@@ -646,8 +658,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
         : getUnlockStep(curUnlockStep, newCombo, newScore - gradeBonusRef.current)
       const isUnlocking = reachedStep > curUnlockStep
 
-      // 피버 차지 — 가득 차면 발동, 해금과 겹치면 새 구종을 먼저 보여주도록 차지를 되돌려 미룸
-      chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
+      // 피버 차지 — 가득 차면 발동, 해금과 겹치면 새 구종을 먼저 보여주도록 차지를 되돌려 미룸 (피버 바가 생긴 뒤부터)
+      if (feverBarOnRef.current) chargeRef.current = Math.min(FEVER_CHARGE_MAX, chargeRef.current + 1)
       lastHitAtRef.current = performance.now()
       if (chargeRef.current >= FEVER_CHARGE_MAX) {
         if (isUnlocking) {
@@ -658,11 +670,12 @@ export default function GameScreen({ onGameOver, onQuit }) {
         }
       }
 
-      // 수박 차지 — 파울 제외. 가득 차면 다음 공들이 수박 (피버 중엔 차지 안 쌓임)
-      if (hitGrade.id !== 'foul' && !melonActiveRef.current) {
-        cycleChargeRef.current = Math.min(CYCLE_CHARGE_MAX, cycleChargeRef.current + 1)
-        if (cycleChargeRef.current >= CYCLE_CHARGE_MAX) {
-          if (isUnlocking) cycleChargeRef.current = CYCLE_CHARGE_MAX - FEVER_UNLOCK_DELAY
+      // 수박 차지 — 파울 제외, 체인지업 해금 뒤부터. 가득 차면 다음 공들이 수박 (피버 중엔 차지 안 쌓임)
+      if (hitGrade.id !== 'foul' && !melonActiveRef.current && curUnlockStep > 0) {
+        const target = cycleTargetRef.current
+        cycleChargeRef.current = Math.min(target, cycleChargeRef.current + 1)
+        if (cycleChargeRef.current >= target) {
+          if (isUnlocking) cycleChargeRef.current = target - FEVER_UNLOCK_DELAY
           else if (feverPendingRef.current) cycleChargeRef.current = 0  // 피버와 겹치면 수박 없이 초기화
           else startWatermelons()
         }
@@ -1187,7 +1200,7 @@ export default function GameScreen({ onGameOver, onQuit }) {
             <img className="batter-sprite" src={batterSrc} alt="batter" draggable={false} />
           </div>
           {/* 피버 차지 게이지 (채움은 gauge 루프에서 DOM 직접 갱신) */}
-          <div ref={gaugeRef} className="fever-gauge power" aria-hidden="true">
+          <div ref={gaugeRef} className={`fever-gauge power${feverBarOn ? ' appear' : ' locked'}`} aria-hidden="true">
             <span className="fever-gauge-label">FVR</span>
             <div className="fever-gauge-track">
               <div ref={gaugeFillRef} className="fever-gauge-fill" />
