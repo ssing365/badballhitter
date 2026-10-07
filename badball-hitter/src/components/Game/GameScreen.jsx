@@ -1063,8 +1063,8 @@ export default function GameScreen({ onGameOver, onQuit }) {
 
   // 화면 연출 단계 — 아웃 직후 > 피버 > 30콤보+ > 평소 (.game-screen의 scene-* 클래스로 CSS에서 처리)
   const sceneMood = outFlash ? 'out' : fever ? 'fever' : combo >= 30 ? 'hype' : 'normal'
-  // 관중 분위기 — 피버·홈런 직후 > 30콤보+ > 10콤보+ > 평소
-  const crowdMood = fever || hrFlash ? 'fever' : combo >= 30 ? 'hype' : combo >= 10 ? 'warm' : 'calm'
+  // 관중 분위기 — 피버(파도타기) > 30콤보+·홈런 직후(크게 들썩) > 10콤보+ > 평소
+  const crowdMood = fever ? 'fever' : combo >= 30 || hrFlash ? 'hype' : combo >= 10 ? 'warm' : 'calm'
 
   // 10콤보마다 콤보 숫자 스타일 단계 상승 (최대 5)
   const comboLevel = Math.min(Math.floor(combo / 10), 5)
