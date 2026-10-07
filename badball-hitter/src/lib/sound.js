@@ -221,14 +221,15 @@ const sfx = {
   watermelon: createSfx('watermelontime.wav', 0.7), // WATERMELON! 팝업
 }
 
-// 박스 스코어 행 확정음 — 행마다 음이 올라감
+// 박스 스코어 행 확정음 — 행마다 음이 올라감 (원본이 너무 작아 scripts/boost-score-ding.py로 키운 wav)
+// 파일명에 '+' 금지 — 토스 웹뷰가 '+'를 공백으로 읽어 로드 실패 (encodeURI는 '+'를 그대로 둠)
 const scoreDings = [
-  'score-ding.mp3',
-  'score-ding_pitch-+2st.wav',
-  'score-ding_pitch-+4st.wav',
-  'score-ding_pitch-+6st.wav',
+  'score-ding.wav',
+  'score-ding_pitch-2st.wav',
+  'score-ding_pitch-4st.wav',
+  'score-ding_pitch-6st.wav',
 ].map((file) => createSfx(file, 0.6))
-const finalScoreDing = createSfx('score-ding_pitch-+12st.wav', 0.8)
+const finalScoreDing = createSfx('score-ding_pitch-12st.wav', 0.8)
 
 export const playSfx = (name) => {
   sfx[name]?.play()

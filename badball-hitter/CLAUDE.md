@@ -36,6 +36,7 @@ badball-hitter/
 │   └── sounds/
 │       ├── Pinball Spring.m4a        # BGM normal (타이틀/결과) — 원본 320kbps mp3는 assets-src/sounds/, 번들용은 `afconvert -f m4af -d aac -b 128000`
 │       ├── Pinball Spring 160.m4a    # BGM fast (게임 플레이)
+│       ├── effects/score-ding*.wav  # 결과 화면 행·최종 점수 띠링 — 원본(assets-src/sounds/effects/)이 너무 작아 `scripts/boost-score-ding.py`로 peak 0.9 정규화 + 1.5초로 자름. 원본 파일명의 `+`는 출력에서 뺌 (public 파일명에 `+` 쓰면 토스 웹뷰에서 로드 실패)
 │       ├── *fast-swing-air-woosh.wav # 효과음 (미사용)
 │       └── *baseball-into-glove.aiff # 효과음 (미사용)
 ├── src/
