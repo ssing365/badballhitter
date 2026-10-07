@@ -10,6 +10,7 @@
 - **Sound**: Howler.js
 - **Backend/DB**: Supabase (PostgreSQL) — 현재 TODO 상태, 추후 연동
 - **배포**: 앱인토스 (`@apps-in-toss/web-framework` 3.x, `apps-in-toss.config.ts`, `npm run build` → `.ait`) / 웹은 Vercel (`npm run build:web` = `--mode web`, `vercel.json` buildCommand)
+- **실기기 디버깅**: `RELEASE_CHANNEL=dogfood npm run build`일 때만 `@apps-in-toss/debug-console`(eruda)이 번들에 들어감 (`vite.config.js` `define.__DEBUG_BUILD__` → `main.jsx` 동적 import). eruda에 `eval`·외부 링크가 있어 **검수 제출 번들은 반드시 일반 `npm run build`**. 디버거 MCP는 저장소 루트 `.mcp.json`의 `ait-devtools`
 - **분석**: GA(gtag, `vite.config.js` 플러그인)·Vercel Analytics(`App.jsx` lazy)는 `--mode web`에서만 포함 — 앱인토스 번들에는 없음
 - **도메인**: 추후 연결 예정 (공유 링크는 `lib/share.js` — 웹은 `https://badballhitter.vercel.app/`, 토스는 토스 공유 링크)
 

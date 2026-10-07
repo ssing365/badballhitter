@@ -21,4 +21,8 @@ const webAnalyticsTags = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [aitDevtools.vite(), react(), webAnalyticsTags()],
+  define: {
+    // 실기기 디버깅 콘솔(main.jsx) — dogfood 빌드에만 넣음
+    __DEBUG_BUILD__: JSON.stringify(process.env.RELEASE_CHANNEL === 'dogfood'),
+  },
 })

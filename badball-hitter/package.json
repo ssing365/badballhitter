@@ -11,6 +11,7 @@
     "deploy": "ait deploy"
   },
   "dependencies": {
+    "@apps-in-toss/debug-console": "https://github.com/toss/apps-in-toss-harness/releases/download/debug-console-v0.1.5/apps-in-toss-debug-console-0.1.5.tgz",
     "@apps-in-toss/web-framework": "^3.5.0",
     "@vercel/analytics": "^2.0.1",
     "howler": "^2.2.4",
