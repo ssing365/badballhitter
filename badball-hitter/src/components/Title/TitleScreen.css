@@ -5,7 +5,6 @@
   width: 100%;
   max-width: 400px;
   height: 100svh;
-  max-height: 700px;
   margin: 0 auto;
   overflow: hidden;
   background: url('/assets/bg.jpg') center / cover no-repeat;
@@ -214,5 +213,12 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* 데스크톱(마우스) 화면에서만 폰 비율로 높이 제한 — 토스 웹뷰처럼 세로가 긴 폰에서는 끝까지 채움 */
+@media (hover: hover) and (pointer: fine) {
+  .title-screen {
+    max-height: 700px;
   }
 }

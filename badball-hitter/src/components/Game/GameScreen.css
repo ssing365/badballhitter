@@ -4,7 +4,6 @@
   width: 100%;
   max-width: 400px;
   height: 100svh;
-  max-height: 700px;
   margin: 0 auto;
   overflow: hidden;
   container-type: size;  /* 자식에서 cqh 단위 사용 */
@@ -1792,3 +1791,9 @@
     -webkit-mask-size: contain;
   }
   
+/* 데스크톱(마우스) 화면에서만 폰 비율로 높이 제한 — 토스 웹뷰처럼 세로가 긴 폰에서는 끝까지 채움 */
+@media (hover: hover) and (pointer: fine) {
+  .game-screen {
+    max-height: 700px;
+  }
+}
