@@ -7,6 +7,9 @@
   margin: 0 auto;
   overflow: hidden;
   container-type: size;  /* 자식에서 cqh 단위 사용 */
+  /* 좌우·수박·파워 버튼 공통 크기 */
+  --btn-w: 88px;
+  --btn-h: 80px;
   --pixel-font: 'Press Start 2P', 'Galmuri11', monospace;
   --pixel-outline:
     2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000,
@@ -39,10 +42,10 @@
   }
 
   .outs-label {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.85);
+    font-family: var(--pixel-font);
+    font-size: 8px;
+    color: #fde047;
+    text-shadow: var(--pixel-outline);
   }
   
   .out-row {
@@ -52,11 +55,11 @@
   }
   
   .out-dot {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    border: 2.5px solid rgba(255,255,255,0.45);
-    background: transparent;
+    border: 3px solid rgba(255,255,255,0.8);
+    background: rgba(0, 0, 0, 0.45);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
     transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.12s;
   }
@@ -182,7 +185,7 @@
   .fever-clock {
     position: absolute;
     right: 6%;
-    bottom: calc(58px + 6px * 2 + 6px);  /* 버튼 높이 + 밑면·버튼 아래 여백 + 간격 */
+    bottom: calc(var(--btn-h) + 6px * 2 + 6px);  /* 버튼 높이 + 밑면·버튼 아래 여백 + 간격 */
     z-index: 3;
     pointer-events: none;
   }
@@ -952,7 +955,7 @@
   /* 피버 — 합쳐진 파워 버튼 위에 올라섬 (버튼보다 앞, 터치는 버튼이 받음) */
   .batter-slot.fever-active {
     z-index: 2;
-    translate: 0 calc(-58px - var(--btn-depth, 6px) + 4px);
+    translate: 0 calc(-1 * var(--btn-h) - var(--btn-depth, 6px) + 4px);
     pointer-events: none;
   }
 
@@ -1147,7 +1150,7 @@
     --btn-depth: 6px;
     position: relative;
     z-index: 1;  /* 커진 타자보다 위 */
-    width: 76px; height: 58px;
+    width: var(--btn-w); height: var(--btn-h);
     margin-bottom: var(--btn-depth);
     touch-action: manipulation; /* 빠른 연타가 더블탭 줌으로 인식되지 않게 */
     -webkit-tap-highlight-color: transparent;
@@ -1192,7 +1195,7 @@
   .dir-arrow::before {
     content: '';
     display: block;
-    width: 15px; height: 27px;
+    width: 20px; height: 36px;  /* 4px 계단 (5칸 × 9칸) */
     background: var(--btn-arrow);
     clip-path: polygon(
       0 0, 20% 0, 20% 11.1%, 40% 11.1%, 40% 22.2%, 60% 22.2%, 60% 33.3%,
@@ -1219,7 +1222,7 @@
     left: 6%; right: 6%;
     bottom: var(--btn-depth);
     z-index: 1;
-    height: 58px;
+    height: var(--btn-h);
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     border-radius: 14px;
