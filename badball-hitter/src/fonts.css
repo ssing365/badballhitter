@@ -1,0 +1,51 @@
+/* 폰트는 번들에 포함 (public/fonts/) — 토스 웹뷰에서 외부 CDN(Google Fonts·jsdelivr) 없이 바로 렌더
+   라틴 폰트는 fontsource의 latin 서브셋, 한글 픽셀 폰트는 galmuri@2.40.3 원본 woff2. 라이선스(OFL)는 같은 폴더 */
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/press-start-2p-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Bebas Neue';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/dm-sans-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/dm-sans-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Galmuri11';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Galmuri11.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Galmuri11';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Galmuri11-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Galmuri14';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Galmuri14.woff2') format('woff2');
+}

@@ -180,7 +180,8 @@ stopBgm()
 - 우상단 HUD: 일시정지 버튼 (`.pause-btn`)
 - 콤보(`.center-combo`, top 29%, 뒤에 어두운 radial 그림자): 10콤보마다 `combo-lv-0~5`로 색/크기(24·24·32·32·32·40px)/글로우 강화 (50+ 불꽃 깜빡임), 0이면 숨김. 피버 중에도 표시 — CHANCE!/GRAND SLAM이 떠 있는 동안엔 제목 아래 top 35%로 비켜남(`.below-title`)
 - 정타 점수 `+N`: 전광판 오른쪽에서 튀어나오는 `.score-pop.hit`. 피버 합계는 전광판 아래 중앙 `.score-pop.fever`(1.6초)로 따로 표시해서 직후 정타 팝업에 묻히지 않음 (`showScorePop(text, tone)`). MISS/TIME UP/NEW PITCH는 `.result-pop`(top 42%, `showPop(text, tone)`) — `new` 보라~핑크 그라데이션 + 빛줄기, `bad` 22px 빨강→검붉은 그라데이션 + 검은 그림자, 등장 후 축 처짐
-- 픽셀 폰트: Google Fonts `Press Start 2P` (`index.html` 로드, CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
+- 픽셀 폰트: `Press Start 2P` (CSS 변수 `--pixel-font`) — 점수/콤보/중앙 팝업/피버
+- 폰트는 전부 번들 포함: `public/fonts/` woff2(Press Start 2P·Bebas Neue·DM Sans는 fontsource latin 서브셋, Galmuri11·11 Bold·14는 galmuri@2.40.3 원본) + OFL 라이선스, `@font-face`는 `src/fonts.css`. 외부 폰트 CDN 쓰지 않음 (토스 웹뷰 로딩·검수)
 - 공 레인: width 54px, 중앙 세로, top 13% ~ bottom `calc(25% + 48px)` (타이머 위에서 끝남)
 - 타이머(`.timer-wrap`, bottom 25%, 좌우 10%): grid `[바 | 초]` + 아래 줄(타격 결과 / 수박 땐 안내 문구, 피버 중엔 타이머 전체 숨김). 전체 높이가 레인 아래 여백 48px 안이어야 맨 앞 공을 안 가림
 - 공 아이템: 48×48px (맨 앞 1.3배)
