@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isMuted, setMuted as setSoundMuted } from '../../lib/sound'
+import { isMuted, setMuted as setSoundMuted, isBgmWaitingGesture } from '../../lib/sound'
 import { isHapticSupported, isHapticOn, setHapticOn } from '../../lib/haptic'
 import volumeIcon from '../../assets/icons/volume.svg'
 import volumeXmarkIcon from '../../assets/icons/volume-xmark.svg'
@@ -18,6 +18,9 @@ export default function BgmToggle() {
   const handleToggle = (e) => {
     // 버튼 포커스가 남아 스페이스/엔터로 재토글되지 않도록 해제
     e.currentTarget.blur()
+    // 자동 재생이 막혀 아직 BGM이 안 나오는 상태 — 켜짐 아이콘을 누른 건 '소리 켜기'로 보고 음소거하지 않음
+    // (이 터치로 sound.js의 첫 터치 대기가 BGM을 재생)
+    if (!muted && isBgmWaitingGesture()) return
     const next = !muted
     setSoundMuted(next)
     setMuted(next)

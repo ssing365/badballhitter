@@ -18,39 +18,35 @@ const loadMuted = () => {
 let muted = loadMuted()
 Howler.mute(muted)
 
-// 백그라운드 전환(리더보드 열기·홈 이동 등) 시 즉시 무음, 돌아오면 사용자 음소거 설정으로 복원
-document.addEventListener('visibilitychange', () => {
-  Howler.mute(document.hidden || muted)
+const createTrack = (file) => new Howl({
+  src: [encodeURI(`/sounds/${file}`)],
+  loop: true,
+  volume: BGM_VOLUME,
+  preload: true,
+  html5: true,
 })
 
-const tracks = {
-  normal: new Howl({
-    src: [encodeURI('/sounds/Pinball Spring.m4a')],
-    loop: true,
-    volume: BGM_VOLUME,
-    preload: true,
-    html5: true,
-  }),
-  fast: new Howl({
-    src: [encodeURI('/sounds/Pinball Spring 160.m4a')],
-    loop: true,
-    volume: BGM_VOLUME,
-    preload: true,
-    html5: true,
-  }),
-}
+// 오디오 객체는 전부 let — 백그라운드 복귀 시 AudioContext째 새로 만듦 (rebuildAudio)
+let tracks = null
+let bgmGain = null
 
 let currentType = null
 let ducked = false
 
-// html5 play()가 대기 중(_playLock)일 때 stop()은 Howler 큐에만 쌓이고, 재생이 시작돼도 실행되지 않음
-// → 첫 탭의 touchend가 타이틀 곡 재생을 시작한 직후 Play 클릭이 멈추려 하면 두 곡이 겹침
-// 실제 재생이 시작된 시점에 현재 트랙이 아니면 바로 정지
-Object.entries(tracks).forEach(([key, howl]) => {
-  howl.on('play', () => {
-    if (currentType !== key) howl.stop()
+const createTracks = () => {
+  tracks = {
+    normal: createTrack('Pinball Spring.m4a'),
+    fast: createTrack('Pinball Spring 160.m4a'),
+  }
+  // html5 play()가 대기 중(_playLock)일 때 stop()은 Howler 큐에만 쌓이고, 재생이 시작돼도 실행되지 않음
+  // → 첫 탭의 touchend가 타이틀 곡 재생을 시작한 직후 Play 클릭이 멈추려 하면 두 곡이 겹침
+  // 실제 재생이 시작된 시점에 현재 트랙이 아니면 바로 정지
+  Object.entries(tracks).forEach(([key, howl]) => {
+    howl.on('play', () => {
+      if (currentType !== key) howl.stop()
+    })
   })
-})
+}
 
 export const isMuted = () => muted
 
@@ -92,8 +88,6 @@ const connectBgmGain = () => {
   }
 }
 
-const bgmGain = connectBgmGain()
-
 // 트랙(howl) 자체 볼륨 — gain 연결 시 1로 두고 gain에서 조절
 const trackVolume = () => (bgmGain ? 1 : bgmVolume())
 
@@ -109,6 +103,18 @@ const setGainVolume = (fadeMs = 0) => {
 
 const GESTURE_EVENTS = ['click', 'keydown', 'touchend']
 let waitingGesture = false
+const GESTURE_CLICK_WINDOW_MS = 600 // 같은 탭의 touchstart → click 사이
+
+// 터치 시작 순간 소리가 잠겨 있었는지 — 자동 재생 차단(첫 진입)이면 BGM 요소는 재생 중이어도 AudioContext가 suspended라 무음
+// touchend에서 Howler·retryOnGesture가 소리를 풀기 전에(capture 단계 touchstart) 기록
+let lockedTouchAt = -Infinity
+window.addEventListener('touchstart', () => {
+  if (waitingGesture || (Howler.ctx && Howler.ctx.state !== 'running')) lockedTouchAt = performance.now()
+}, { capture: true, passive: true })
+
+// 소리가 잠긴 상태에서 누른 탭 — 이때 사운드 토글을 누르면 음소거 대신 '소리 켜기'로 처리 (이 탭이 소리를 풂)
+export const isBgmWaitingGesture = () =>
+  waitingGesture || performance.now() - lockedTouchAt < GESTURE_CLICK_WINDOW_MS
 
 // 자동재생 차단(첫 접속 타이틀) 시 html5 audio는 play()가 id를 반환하고 비동기로 playerror만 발생
 // → 첫 사용자 입력 때 그 시점의 현재 트랙을 재생
@@ -178,6 +184,73 @@ export const playBgm = (type) => {
   }
 }
 
+// 백그라운드 전환(리더보드 열기·홈 이동 등) 시 즉시 무음 + BGM 일시정지, 돌아오면 다시 재생
+// iOS 웹뷰는 백그라운드에서 오디오 세션을 끊어 AudioContext가 interrupted가 되는데,
+// 돌아와서 resume하면 state는 running이어도 스피커 출력이 죽어 BGM·효과음 전부 무음
+// → 복귀 시 AudioContext가 멈춰 있으면 Howler째(AudioContext·모든 Howl) 새로 만들고 BGM은 처음부터
+//   (이어 재생은 seek가 곡 전환 정지와 꼬여 BGM이 겹치거나 앞부분이 반복돼서 뺌)
+let bgmPausedInBackground = false
+
+// AudioContext 깨우기 — 탭 없이 막히면 다음 터치에서 한 번 더
+const resumeAudioContext = () => {
+  const ctx = Howler.ctx
+  if (!ctx || ctx.state === 'running') return
+  ctx.resume().catch(() => {})
+  const onGesture = () => {
+    GESTURE_EVENTS.forEach((ev) => window.removeEventListener(ev, onGesture))
+    if (Howler.ctx === ctx && ctx.state !== 'running') ctx.resume().catch(() => {})
+  }
+  GESTURE_EVENTS.forEach((ev) => window.addEventListener(ev, onGesture))
+}
+
+// AudioContext·모든 Howl 생성 (앱 시작 + 백그라운드 복귀 때 출력이 죽었을 때)
+const buildAudio = () => {
+  createTracks()
+  bgmGain = connectBgmGain()
+  createEffects()
+}
+
+const rebuildAudio = () => {
+  const type = currentType
+  // 예전 BGM <audio>는 닫힐 AudioContext에 묶여 있어(MediaElementSource는 요소당 한 번) 재사용하면 무음
+  // → Howler가 unload 때 html5 풀에 돌려놓는 걸 다시 빼냄
+  const oldNodes = Object.values(tracks).flatMap((howl) => howl._sounds.map((snd) => snd._node))
+  Howler.unload() // 모든 Howl 해제 + AudioContext 닫고 새로 만듦
+  Howler._html5AudioPool = Howler._html5AudioPool.filter((node) => !oldNodes.includes(node))
+  // 새 AudioContext·BGM <audio>도 첫 터치에서 Howler가 풀도록 — Howler는 한 번 풀면 autoUnlock을 스스로 꺼서 다시 켬
+  // (터치 때 미리 풀어 둔 <audio> 풀도 다시 채움 — 다시 만들 때마다 BGM이 2개씩 가져가 바닥나면 BGM이 안 나옴)
+  Howler._audioUnlocked = false
+  Howler.autoUnlock = true
+  Howler.mute(muted)
+  pausedSfx.clear()
+  buildAudio()
+  currentType = null
+  if (type) playBgm(type)
+  resumeAudioContext()
+}
+
+document.addEventListener('visibilitychange', () => {
+  const track = currentType && tracks[currentType]
+  if (document.hidden) {
+    Howler.mute(true)
+    bgmPausedInBackground = !!track && track.playing()
+    if (bgmPausedInBackground) track.pause()
+    return
+  }
+  if (Howler.ctx && Howler.ctx.state !== 'running') {
+    rebuildAudio()
+  } else if (bgmPausedInBackground && track && !track.playing()) {
+    // AudioContext가 안 끊긴 짧은 전환 — 그대로 이어서 재생
+    Howler.mute(muted)
+    track.off('playerror')
+    track.once('playerror', retryOnGesture)
+    track.play()
+  } else {
+    Howler.mute(muted)
+  }
+  bgmPausedInBackground = false
+})
+
 export const stopBgm = () => {
   Object.values(tracks).forEach(stopTrack)
   currentType = null
@@ -186,12 +259,13 @@ export const stopBgm = () => {
 // ── 효과음 ──
 const HIT_SFX_VOLUME = 0.7
 
-// Web Audio(기본값)로 재생 — html5 audio보다 지연이 짧고 연타 시 겹쳐 재생 가능
-const hitSounds = [1, 2, 3].map((n) => new Howl({
-  src: [`/sounds/effects/bat-hit-0${n}.wav`],
-  volume: HIT_SFX_VOLUME,
-  preload: true,
-}))
+// 효과음은 Web Audio(기본값)로 재생 — html5 audio보다 지연이 짧고 연타 시 겹쳐 재생 가능
+let hitSounds = []
+let sfx = {}
+let scoreDings = []
+let finalScoreDing = null
+let feverHit = null
+let melonCrashes = []
 
 // 정타 시 배트 타격음 3종 중 하나를 랜덤 재생
 export const playHitSfx = () => {
@@ -206,30 +280,36 @@ const createSfx = (file, volume, options = {}) => new Howl({
   ...options,
 })
 
-const sfx = {
-  swoosh: createSfx('bat-swoosh.wav', 0.8),
-  crowdDisappointment: createSfx('crowd disappointment.wav', 0.6),
-  fever: createSfx('fevertime.wav', 0.7),
-  feverCrowd: createSfx('crowd-cheering.wav', 0.6),
-  charge: createSfx('charge.wav', 0.7), // 피버 파워 충전 (꾹 누르는 동안)
-  fullSwing: createSfx('grandslam swoosh.wav', 0.8), // 100% 파워 스윙
-  scoreboard: createSfx('scoreboard.wav', 0.7),
-  scoreboardSoft: createSfx('scoreboard.wav', 0.3), // 피버 준비(READY) — 작게
-  stamp: createSfx('stamp.mp3', 0.8),
-  fanfare: createSfx('fanfare.mp3', 0.8),
-  newBall: createSfx('new-ball.wav', 0.7),
-  watermelon: createSfx('watermelontime.wav', 0.7), // WATERMELON! 팝업
+const createEffects = () => {
+  hitSounds = [1, 2, 3].map((n) => createSfx(`bat-hit-0${n}.wav`, HIT_SFX_VOLUME))
+  sfx = {
+    swoosh: createSfx('bat-swoosh.wav', 0.8),
+    crowdDisappointment: createSfx('crowd disappointment.wav', 0.6),
+    fever: createSfx('fevertime.wav', 0.7),
+    feverCrowd: createSfx('crowd-cheering.wav', 0.6),
+    charge: createSfx('charge.wav', 0.7), // 피버 파워 충전 (꾹 누르는 동안)
+    fullSwing: createSfx('grandslam swoosh.wav', 0.8), // 100% 파워 스윙
+    scoreboard: createSfx('scoreboard.wav', 0.7),
+    scoreboardSoft: createSfx('scoreboard.wav', 0.3), // 피버 준비(READY) — 작게
+    stamp: createSfx('stamp.mp3', 0.8),
+    fanfare: createSfx('fanfare.mp3', 0.8),
+    newBall: createSfx('new-ball.wav', 0.7),
+    watermelon: createSfx('watermelontime.wav', 0.7), // WATERMELON! 팝업
+  }
+  // 박스 스코어 행 확정음 — 행마다 음이 올라감 (원본이 너무 작아 scripts/boost-score-ding.py로 키운 wav)
+  // 파일명에 '+' 금지 — 토스 웹뷰가 '+'를 공백으로 읽어 로드 실패 (encodeURI는 '+'를 그대로 둠)
+  scoreDings = [
+    'score-ding.wav',
+    'score-ding_pitch-2st.wav',
+    'score-ding_pitch-4st.wav',
+    'score-ding_pitch-6st.wav',
+  ].map((file) => createSfx(file, 0.6))
+  finalScoreDing = createSfx('score-ding_pitch-12st.wav', 0.8)
+  // 피버 연타 타격음 — 연타 겹침 대비 풀 확장
+  feverHit = createSfx('bat-hit-03.wav', 0.6, { pool: 16 })
+  // 수박 깨지는 소리 2종 — 연타 겹침 대비 풀 확장
+  melonCrashes = ['crash_watermelon.wav', 'crash_watermelon2.wav'].map((file) => createSfx(file, 0.7, { pool: 8 }))
 }
-
-// 박스 스코어 행 확정음 — 행마다 음이 올라감 (원본이 너무 작아 scripts/boost-score-ding.py로 키운 wav)
-// 파일명에 '+' 금지 — 토스 웹뷰가 '+'를 공백으로 읽어 로드 실패 (encodeURI는 '+'를 그대로 둠)
-const scoreDings = [
-  'score-ding.wav',
-  'score-ding_pitch-2st.wav',
-  'score-ding_pitch-4st.wav',
-  'score-ding_pitch-6st.wav',
-].map((file) => createSfx(file, 0.6))
-const finalScoreDing = createSfx('score-ding_pitch-12st.wav', 0.8)
 
 export const playSfx = (name) => {
   sfx[name]?.play()
@@ -273,16 +353,11 @@ export const resumeSfx = (name) => {
   sfx[name].play() // 일시정지된 소리가 하나면 Howler가 그 소리를 이어서 재생
 }
 
-// 피버 연타 타격음 — 연타 겹침 대비 풀 확장
-const feverHit = createSfx('bat-hit-03.wav', 0.6, { pool: 16 })
-
 export const playFeverHitSfx = () => {
   feverHit.play()
 }
 
-// 수박 깨지는 소리 2종 중 하나를 랜덤 재생 — 연타 겹침 대비 풀 확장
-const melonCrashes = ['crash_watermelon.wav', 'crash_watermelon2.wav'].map((file) => createSfx(file, 0.7, { pool: 8 }))
-
+// 수박 깨지는 소리 2종 중 하나를 랜덤 재생
 export const playMelonCrashSfx = () => {
   melonCrashes[Math.floor(Math.random() * melonCrashes.length)].play()
 }
@@ -315,3 +390,5 @@ export const duckBgm = (on) => {
   if (!track || !track.playing()) return // 재생 시작 시 bgmVolume()으로 반영됨
   track.fade(track.volume(), bgmVolume(), fadeMs)
 }
+
+buildAudio()

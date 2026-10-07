@@ -163,7 +163,9 @@ stopBgm()
 - `currentType` 변수로 현재 BGM 추적, 같은 트랙 재생 중이면 무시
 - `App.jsx`의 `useEffect([screen])`가 단일 진입점 + 버튼 클릭 핸들러에서도 동기 호출 (autoplay unlock용)
 - **음소거**: `isMuted/setMuted` — `Howler.mute`로 BGM + 효과음 전체 (localStorage `bgmMuted`). 타이틀·결과는 `BgmToggle`, 게임 중은 일시정지 메뉴
-- 백그라운드 전환(`visibilitychange`) 시 전역 무음, 복귀 시 음소거 설정으로 복원 (앱인토스 검수 항목)
+- 백그라운드 전환(`visibilitychange`) 시 전역 무음 + BGM 일시정지 (앱인토스 검수 항목). iOS 토스 웹뷰는 백그라운드에서 AudioContext를 끊고, 복귀 후 resume해도 state만 running이고 스피커 출력은 죽어 있음(BGM·효과음 전부 무음) → 복귀 시 AudioContext가 running이 아니면 `rebuildAudio()`로 Howler째 새로 만들고 BGM은 처음부터 재생 (첫 터치에서 풀림). 이때 예전 BGM `<audio>`는 닫힌 AudioContext에 묶여 있어 html5 풀에서 빼고, Howler가 한 번 풀면 꺼 버리는 `autoUnlock`을 다시 켬. 이어 재생(`seek`)은 BGM 겹침·앞부분 반복을 일으켜서 안 함
+- 오디오 객체(`tracks`·`bgmGain`·효과음 Howl)는 전부 `let` — `buildAudio()`가 만들고 재생성 때 다시 만듦. 다른 모듈은 export 함수로만 접근 (Howl을 직접 들고 있으면 안 됨)
+- 첫 진입은 자동 재생이 막혀 첫 터치에서 BGM이 시작됨. 소리가 잠긴 상태에서 누른 사운드 토글은 음소거 대신 '소리 켜기'로 처리(`isBgmWaitingGesture` — touchend가 click보다 먼저 소리를 풀어서 touchstart 시점으로 판단)
 - 일시정지 중 `pauseSfx/resumeSfx`로 피버 효과음을 멈췄다 이어서 재생
 
 ## 게임 화면 사이즈
