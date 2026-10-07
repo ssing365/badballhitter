@@ -937,7 +937,8 @@
   /* ── 방향 버튼 + 타자 ── */
   .btn-row {
     position: absolute;
-    bottom: 3%; left: 0; right: 0;
+    /* 토스 웹뷰: 아이폰 홈 바 영역 위로 (lib/safeArea.js) */
+    bottom: max(3%, calc(var(--safe-bottom, 0px) + 8px)); left: 0; right: 0;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;

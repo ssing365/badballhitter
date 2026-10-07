@@ -620,7 +620,7 @@
 .result-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(96px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   padding: 14px 24px;
   border: 3px solid #111827;
