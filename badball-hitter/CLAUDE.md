@@ -47,7 +47,7 @@ badball-hitter/
 │   ├── index.css             # 전역 스타일만 (reset, body)
 │   ├── lib/
 │   │   ├── sound.js          # Howler.js BGM 관리
-│   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시)
+│   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시). 토스에선 키 앞에 게임 사용자 식별키(`getUserKeyForGame` hash, 3초 타임아웃) 접두사 — 접두사 없는 예전 기록은 첫 로드 때 옮김
 │   │   ├── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
 │   │   ├── share.js          # 공유 링크 — 웹 빌드는 vercel 주소, 토스는 `getTossShareLink('intoss://badball-hitter')`, 실패하면 null(링크 없는 문구). 토스 번들엔 외부 링크 금지(검수)
 │   │   └── haptic.js         # 햅틱(Device.triggerHaptic) + 진동 on/off(localStorage `hapticOff`), 토스 웹뷰 밖이면 no-op
