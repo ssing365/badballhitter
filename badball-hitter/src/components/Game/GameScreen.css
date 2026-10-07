@@ -22,7 +22,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 8px 12px;
+    /* 토스 웹뷰: 상태바 아래로 내리고, 일시정지 버튼은 우상단 ··· ✕ 버튼 왼쪽으로 (lib/safeArea.js) */
+    padding: calc(8px + var(--safe-top, 0px)) max(12px, var(--toss-nav-space, 0px)) 8px 12px;
     background: rgba(0, 0, 0, 0.55);
   }
   
