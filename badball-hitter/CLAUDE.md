@@ -199,7 +199,7 @@ stopBgm()
 
 ## 주간 팀 랭킹 (Supabase)
 - 팀별 **한 주 동안 모든 판 점수 합계** + 참여자 수. 한 주 = 한국시간 월요일 00:00 시작. 이번 주 / 지난주 탭
-- **토스 판만 집계** — 게임 사용자 식별키 hash(`records.js` `getUserHash()`)가 있을 때만 제출. 웹은 보기만 ("Team scores are counted in the Toss app only")
+- **토스 판만 집계** — 게임 사용자 식별키 hash(`records.js` `getUserHash()`)가 있을 때만 제출, 로컬 개발(`import.meta.env.DEV`)은 devtools 가짜 식별키라 제출 안 함. 웹은 보기만 ("Team scores are counted in the Toss app only")
 - DB: `supabase/team-ranking.sql` (SQL Editor에 통째로 실행, 다시 실행해도 됨) — `team_scores` 테이블은 RLS로 직접 접근 막고, anon은 RPC 2개만:
   - `submit_team_score(p_user, p_team, p_score)` — 팀 id 10개(`team_ids()`, constants `TEAMS`와 같게 유지), 0~300만점, 같은 사람 10초 안 재제출 무시
   - `weekly_team_ranking(p_offset)` — 10개 팀 전부(기록 없으면 0) `team_id, total, players, games`, 합계 내림차순

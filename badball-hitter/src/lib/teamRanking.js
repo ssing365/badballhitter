@@ -10,7 +10,8 @@ const TIMEOUT_MS = 5000
 
 export const isTeamRankingEnabled = () => !!(URL_BASE && ANON_KEY)
 
-export const canSubmitTeamScore = () => isTeamRankingEnabled() && getUserHash() != null
+// 로컬 개발(npm run dev)은 devtools 가짜 식별키가 진짜 DB에 올라가므로 제출 안 함
+export const canSubmitTeamScore = () => !import.meta.env.DEV && isTeamRankingEnabled() && getUserHash() != null
 
 const rpc = async (fn, args) => {
   const controller = new AbortController()
