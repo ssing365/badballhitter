@@ -17,9 +17,11 @@ export default function TitleScreen({ onPlay, onRanking, onTeamRanking, loading 
         </button>
 
         <div className="title-rankings">
-          <button className="btn-ranking" onClick={onRanking}>
-            Ranking
-          </button>
+          {onRanking && (
+            <button className="btn-ranking" onClick={onRanking}>
+              Ranking
+            </button>
+          )}
           {onTeamRanking && (
             <button className="btn-ranking" onClick={onTeamRanking}>
               Team Ranking

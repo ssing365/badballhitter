@@ -18,6 +18,9 @@ const Analytics = import.meta.env.MODE === 'web'
   ? lazy(() => import('@vercel/analytics/react').then((m) => ({ default: m.Analytics })))
   : null
 
+// 웹 배포(--mode web)엔 토스 리더보드가 없음 → 타이틀에 Ranking 버튼 없이 Team Ranking만
+const IS_WEB_BUILD = import.meta.env.MODE === 'web'
+
 export default function App() {
   const [screen, setScreen] = useState('title') // 'title' | 'team' | 'playing' | 'result'
   const [team, setTeam] = useState(loadTeam) // 지난번 고른 팀 (없으면 null — 팀 화면에서 골라야 시작)
@@ -115,7 +118,7 @@ export default function App() {
     content = (
       <TitleScreen
         onPlay={handlePlay}
-        onRanking={handleRanking}
+        onRanking={IS_WEB_BUILD ? null : handleRanking}
         onTeamRanking={openTeamRanking}
         loading={!assetsReady}
       />

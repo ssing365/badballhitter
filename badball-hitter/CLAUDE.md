@@ -72,7 +72,7 @@ badball-hitter/
 타이틀(`TitleScreen`) → 팀 선택(`TeamSelect`) → 게임(`GameScreen`) → 결과(`GameResult`) → Play Again(같은 팀으로 바로) / Back to Title
 - 팀 선택: 타이틀 Play Ball 때마다 나오고 지난번 팀(`lib/team.js`)이 미리 골라져 있음 — Play Ball 한 번이면 시작, 처음엔 골라야 버튼이 켜짐. 팀은 `TEAMS`(constants, 도시+애칭 — 실제 구단명은 상표 때문에 안 씀), 타자 그림은 `getBatterImages(team)`. 버튼 배지 = 헬멧 이니셜 패치 모양(patch 바탕·helmet 테두리·letter 글자). 고르는 순간 그 팀 그림 프리로드, 저장된 팀은 앱 시작 프리로드에 포함
 - 닉네임은 없음 — 토스 리더보드는 점수만 받고(`submitGameCenterLeaderBoardScore({ score })`) 토스 게임 프로필 닉네임으로 표시
-- 타이틀의 Ranking 버튼은 토스 게임센터 리더보드(`openLeaderboard`), 토스 밖(웹)에서는 `alert('Ranking coming soon!')`
+- 타이틀의 Ranking 버튼은 토스 게임센터 리더보드(`openLeaderboard`). 웹 빌드(`--mode web`)엔 버튼 자체가 없고 Team Ranking만 (로컬 dev에서 누르면 `alert('Ranking coming soon!')`)
 - 재시작 시 `gameKey` 증가로 `GameScreen` 리마운트
 - 타이틀 `Play Ball!`은 결과 화면 `Play again!`과 같은 스타일(주황빛 노란 블록, 안팎 글로우, 갈색 그라데이션 픽셀 글씨, 실밥 점선), Ranking은 결과 화면 메인화면 버튼과 같은 Galmuri11 텍스트 버튼
 
