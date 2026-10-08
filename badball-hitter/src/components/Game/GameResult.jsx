@@ -25,7 +25,7 @@ function prefersReducedMotion() {
 
 const easeOutCubic = (t) => 1 - (1 - t) ** 3
 
-export default function GameResult({ stats, team, onRetry, onHome }) {
+export default function GameResult({ stats, team, onRetry, onHome, onTeamRanking }) {
   const { unlockStep = 0, pitchBallImages = {} } = stats
   const grade = getGrade(unlockStep)
   const { rows, finalScore } = useMemo(() => calcFinalBreakdown(stats), [stats])
@@ -272,6 +272,9 @@ export default function GameResult({ stats, team, onRetry, onHome }) {
           <div className="result-sub-actions">
             {onHome && (
               <button className="btn-home" onClick={onHome}>메인화면</button>
+            )}
+            {onTeamRanking && (
+              <button className="btn-share" onClick={onTeamRanking}>팀 랭킹</button>
             )}
             <button className="btn-share" onClick={handleShare}>공유하기</button>
           </div>

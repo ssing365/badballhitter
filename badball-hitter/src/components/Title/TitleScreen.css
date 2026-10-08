@@ -166,6 +166,13 @@
   cursor: wait;
 }
 
+/* Ranking · Team Ranking 한 줄 */
+.title-rankings {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
 /* Ranking — 결과 화면 메인화면 버튼과 같은 픽셀 텍스트 버튼 */
 .btn-ranking {
   margin-top: 0.75rem;

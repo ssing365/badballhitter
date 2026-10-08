@@ -3,10 +3,12 @@ import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
 import TeamSelect from './components/Team/TeamSelect'
+import TeamRanking from './components/Team/TeamRanking'
 import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
 import { preloadImages, GAME_IMAGES } from './lib/preload'
 import { loadTeam, saveTeam } from './lib/team'
+import { isTeamRankingEnabled } from './lib/teamRanking'
 import { getBatterImages } from './components/constants'
 import { loadBestRecord } from './lib/records'
 import { openLeaderboard } from './lib/leaderboard'
@@ -22,6 +24,9 @@ export default function App() {
   const [stats, setStats] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [assetsReady, setAssetsReady] = useState(false)
+  // 주간 팀 랭킹 — 화면 전환 대신 오버레이 (결과 화면을 리마운트하지 않게)
+  const [showTeamRanking, setShowTeamRanking] = useState(false)
+  const openTeamRanking = isTeamRankingEnabled() ? () => setShowTeamRanking(true) : null
 
   // 게임 이미지 프리로드 + 최고 기록 로드 — 완료 전엔 Play 버튼 비활성
   useEffect(() => {
@@ -92,6 +97,7 @@ export default function App() {
       <GameResult
         stats={stats}
         team={team}
+        onTeamRanking={openTeamRanking}
         onRetry={handleRetry}
         onHome={handleBackToTitle}
       />
@@ -110,6 +116,7 @@ export default function App() {
       <TitleScreen
         onPlay={handlePlay}
         onRanking={handleRanking}
+        onTeamRanking={openTeamRanking}
         loading={!assetsReady}
       />
     )
@@ -119,6 +126,7 @@ export default function App() {
     <>
       {content}
       {screen !== 'playing' && <BgmToggle />}
+      {showTeamRanking && <TeamRanking myTeam={team} onClose={() => setShowTeamRanking(false)} />}
       {Analytics && <Suspense fallback={null}><Analytics /></Suspense>}
     </>
   )

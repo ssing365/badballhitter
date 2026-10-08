@@ -8,7 +8,7 @@
 - **Frontend**: React 18 + Vite 5 (JS, TypeScript 아님)
 - **Styling**: 컴포넌트별 일반 `.css` 파일 import (CSS Modules 아님 — 전역 클래스명)
 - **Sound**: Howler.js
-- **Backend/DB**: Supabase (PostgreSQL) — 현재 TODO 상태, 추후 연동
+- **Backend/DB**: Supabase (PostgreSQL) — 주간 팀 랭킹만 (`supabase/team-ranking.sql`, 아래 섹션)
 - **배포**: 앱인토스 (`@apps-in-toss/web-framework` 3.x, `apps-in-toss.config.ts`, `npm run build` → `.ait`) / 웹은 Vercel (`npm run build:web` = `--mode web`, `vercel.json` buildCommand)
 - **실기기 디버깅**: `RELEASE_CHANNEL=dogfood npm run build`일 때만 `@apps-in-toss/debug-console`(eruda)이 번들에 들어감 (`vite.config.js` `define.__DEBUG_BUILD__` → `main.jsx` 동적 import). eruda에 `eval`·외부 링크가 있어 **검수 제출 번들은 반드시 일반 `npm run build`**. 디버거 MCP는 저장소 루트 `.mcp.json`의 `ait-devtools`
 - **분석**: GA(gtag, `vite.config.js` 플러그인)·Vercel Analytics(`App.jsx` lazy)는 `--mode web`에서만 포함 — 앱인토스 번들에는 없음
@@ -26,7 +26,8 @@ badball-hitter/
 │   │   ├── pitcher_second.png    # 투수 교체 후 새 투수 (흰 유니폼, 원본 assets-src/second_pitcher.png를 `scripts/make-second-pitcher.py`가 pitcher_idle과 같은 165×216 캔버스·크기·발 위치로 맞춤, 땀 그림 없음)
 │   │   ├── batter_idle.png
 │   │   ├── batter_swing_l.png
-│   │   ├── batter_swing_r.png
+│   │   ├── batter_swing_r.png      # 기본(파란 K) 타자 — 팀 미선택 폴백, 팀 그림의 원본
+│   │   ├── batters/<팀id>_{idle,swing_l,swing_r}.png  # 팀 유니폼 타자 30장 — `scripts/recolor-batter.py public/assets/batters teams --assets`로 생성 (원본 batter_*를 HSV로 다시 칠하고 헬멧 이니셜 교체, 팀 색은 스크립트 `TEAMS`)
 │   │   └── balls/
 │   │       ├── white.png         # 직구 고정
 │   │       ├── blue.png / green.png / purple.png / red.png / nurcle.png  # 게임마다 셔플 배정
@@ -42,10 +43,12 @@ badball-hitter/
 │       └── *baseball-into-glove.aiff # 효과음 (미사용)
 ├── src/
 │   ├── main.jsx
-│   ├── App.jsx               # 화면 전환 + BGM 전환 (screen: 'title' | 'playing' | 'result')
+│   ├── App.jsx               # 화면 전환 + BGM 전환 (screen: 'title' | 'team' | 'playing' | 'result')
 │   ├── App.css               # Vite 템플릿 잔재 (미사용)
 │   ├── index.css             # 전역 스타일만 (reset, body)
 │   ├── lib/
+│   │   ├── team.js           # 고른 팀 id — localStorage `team` (try/catch)
+│   │   ├── teamRanking.js    # 주간 팀 랭킹 Supabase RPC (제출·조회·주 기간)
 │   │   ├── sound.js          # Howler.js BGM 관리
 │   │   ├── records.js        # 최고 기록 — SDK Storage, 토스 밖이면 localStorage 폴백 (앱 시작 시 로드·캐시). 토스에선 키 앞에 게임 사용자 식별키(`getUserKeyForGame` hash, 3초 타임아웃) 접두사 — 접두사 없는 예전 기록은 첫 로드 때 옮김
 │   │   ├── leaderboard.js    # 토스 게임센터 리더보드 열기·점수 제출 (5.221.0+, 토스 밖이면 no-op)
@@ -60,12 +63,15 @@ badball-hitter/
 │       ├── Game/Crowd.jsx / .css      # 관중석 들썩임 레이어
 │       ├── Game/Fielders.jsx / .css   # 내야 수비수 2명 (유격수·2루수)
 │       ├── Sound/BgmToggle.jsx / .css # 타이틀·결과 우상단 사운드 토글 + 진동 토글(토스 웹뷰에서만)
-│       └── Team/TeamSelect.jsx / .css   # ⚠️ 미사용 + 깨짐 (constants에 없는 TEAMS import, 한글 UI)
+│       ├── Team/TeamSelect.jsx / .css   # 팀 선택 (2열×5줄 버튼, 흐린 경기장 배경)
+│       ├── Team/TeamRanking.jsx / .css  # 주간 팀 랭킹 오버레이
+│       └── Team/TeamBadge.jsx / .css    # 팀 배지 (헬멧 이니셜 패치 모양) + `teamAccent`
 ```
 
 ## 화면 흐름 (현재)
-타이틀(`TitleScreen`) → 게임(`GameScreen`) → 결과(`GameResult`) → Play Again / Back to Title
-- 팀 선택/닉네임 입력 화면은 아직 흐름에 없음
+타이틀(`TitleScreen`) → 팀 선택(`TeamSelect`) → 게임(`GameScreen`) → 결과(`GameResult`) → Play Again(같은 팀으로 바로) / Back to Title
+- 팀 선택: 타이틀 Play Ball 때마다 나오고 지난번 팀(`lib/team.js`)이 미리 골라져 있음 — Play Ball 한 번이면 시작, 처음엔 골라야 버튼이 켜짐. 팀은 `TEAMS`(constants, 도시+애칭 — 실제 구단명은 상표 때문에 안 씀), 타자 그림은 `getBatterImages(team)`. 버튼 배지 = 헬멧 이니셜 패치 모양(patch 바탕·helmet 테두리·letter 글자). 고르는 순간 그 팀 그림 프리로드, 저장된 팀은 앱 시작 프리로드에 포함
+- 닉네임은 없음 — 토스 리더보드는 점수만 받고(`submitGameCenterLeaderBoardScore({ score })`) 토스 게임 프로필 닉네임으로 표시
 - 타이틀의 Ranking 버튼은 토스 게임센터 리더보드(`openLeaderboard`), 토스 밖(웹)에서는 `alert('Ranking coming soon!')`
 - 재시작 시 `gameKey` 증가로 `GameScreen` 리마운트
 - 타이틀 `Play Ball!`은 결과 화면 `Play again!`과 같은 스타일(주황빛 노란 블록, 안팎 글로우, 갈색 그라데이션 픽셀 글씨, 실밥 점선), Ranking은 결과 화면 메인화면 버튼과 같은 Galmuri11 텍스트 버튼
@@ -191,26 +197,18 @@ stopBgm()
 - 방향 버튼: 88×80px — `.game-screen`의 `--btn-w`/`--btn-h` 하나로 좌우·수박·파워 버튼 공통 (피버 중 좌우 6% 안쪽 전체 폭 × `--btn-h` 파워 버튼 하나)
 - 타자 스프라이트: 88×88px / 투수: 76×76px (top 37.5%)
 
-## 리더보드 / 닉네임 전략 (미구현)
-- **로그인 없음** — 절대 소셜 로그인 붙이지 않음
-- 닉네임: 타이틀 화면에서 텍스트 입력 (선택사항)
-- 미입력 시 자동 닉네임 배정 (예: "Anonymous LG Fan")
-- localStorage에 닉네임 + 팀 저장 → 재방문 시 자동 입력
-- 팀 선택 + 닉네임이 리더보드에 표시
-
-## Supabase 연동 (TODO)
-코드 내 `// TODO: Supabase` 주석으로 연동 위치 표시됨:
-- `GameScreen.jsx` `handleGameOver()` — `saveScore()` 호출 위치
-- `GameResult.jsx` — `saveScore` import 위치, Top 10 `<Leaderboard>` 위치
-
-```sql
--- 연동 시 필요한 테이블
-users  (id uuid, nickname text, team_id text, created_at timestamp)
-scores (id uuid, nickname text, team_id text, score int,
-        accuracy int, max_combo int, played_at timestamp)
-```
-- RLS: scores INSERT 누구나, SELECT 전체 공개
-- `src/lib/supabase.js` 파일 생성해서 연동
+## 주간 팀 랭킹 (Supabase)
+- 팀별 **한 주 동안 모든 판 점수 합계** + 참여자 수. 한 주 = 한국시간 월요일 00:00 시작. 이번 주 / 지난주 탭
+- **토스 판만 집계** — 게임 사용자 식별키 hash(`records.js` `getUserHash()`)가 있을 때만 제출. 웹은 보기만 ("Team scores are counted in the Toss app only")
+- DB: `supabase/team-ranking.sql` (SQL Editor에 통째로 실행, 다시 실행해도 됨) — `team_scores` 테이블은 RLS로 직접 접근 막고, anon은 RPC 2개만:
+  - `submit_team_score(p_user, p_team, p_score)` — 팀 id 10개(`team_ids()`, constants `TEAMS`와 같게 유지), 0~300만점, 같은 사람 10초 안 재제출 무시
+  - `weekly_team_ranking(p_offset)` — 10개 팀 전부(기록 없으면 0) `team_id, total, players, games`, 합계 내림차순
+- 클라이언트: `lib/teamRanking.js` — supabase-js 없이 `fetch`로 `/rest/v1/rpc/<fn>` (5초 타임아웃). env `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY`(로컬 `.env.local`, Vercel 환경변수) 없으면 팀 랭킹 버튼 숨김
+- 제출: 결과 화면 진입 시 `submitTeamScore(team, finalScore)` 한 번 (실패는 조용히 무시)
+- 화면: `Team/TeamRanking` — 타이틀 `Team Ranking`(Ranking 옆) / 결과 `팀 랭킹`(메인화면·공유하기 사이)에서 여는 **오버레이**(App `showTeamRanking`). 화면 전환으로 하면 결과 화면이 리마운트돼 카운트업·점수 제출이 다시 돌아서. 1위 대비 막대(팀색), 내 팀 강조, 기록 없는 팀은 순위 '-'
+- 토스 CORS: 외부 서버는 `https://badball-hitter.apps.tossmini.com`·`https://badball-hitter.private-apps.tossmini.com` 허용 필요 (Supabase REST는 기본 전체 허용)
+- 한계: 사용자 hash는 클라이언트가 보내는 값이라 API 직접 호출로 조작 가능 — 점수 상한·10초 제한으로 피해만 줄임
+- 닉네임 없음 — 토스 리더보드는 토스 게임 프로필 닉네임, 자체 개인 랭킹을 만들 때 다시 검토
 - `onGameOver` stats: `{ score, correct, classified, maxCombo, powerBalls, homeRuns, homeRunPts, grandSlams, batSpeed, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 
 ## 코딩 컨벤션
@@ -242,7 +240,7 @@ scores (id uuid, nickname text, team_id text, score int,
 - 결과 공유: `navigator.share` 없으면 클립보드 복사
 
 ## 구현 예정
-- 팀 선택/닉네임 화면 (TeamSelect 재작성 — 영어 UI, TEAMS 상수 추가)
+- 닉네임 (자체 개인 랭킹 붙일 때 — 토스 리더보드엔 못 넣음)
 
 ### 그랜드슬램(파워 피버)
 - 파워 충전 효과음 찾기 (결과 화면 효과음으로 같이 써도 될 듯)

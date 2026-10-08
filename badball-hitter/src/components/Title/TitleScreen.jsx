@@ -1,6 +1,6 @@
 import './TitleScreen.css'
 
-export default function TitleScreen({ onPlay, onRanking, loading }) {
+export default function TitleScreen({ onPlay, onRanking, onTeamRanking, loading }) {
   return (
     <div className="title-screen">
       <div className="title-scrim" />
@@ -16,9 +16,16 @@ export default function TitleScreen({ onPlay, onRanking, loading }) {
           <span className="btn-play-ball-text">{loading ? 'Loading...' : 'Play Ball!'}</span>
         </button>
 
-        <button className="btn-ranking" onClick={onRanking}>
-          Ranking
-        </button>
+        <div className="title-rankings">
+          <button className="btn-ranking" onClick={onRanking}>
+            Ranking
+          </button>
+          {onTeamRanking && (
+            <button className="btn-ranking" onClick={onTeamRanking}>
+              Team Ranking
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

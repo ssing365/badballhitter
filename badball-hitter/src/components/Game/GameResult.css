@@ -445,12 +445,21 @@
   animation: result-in 0.6s 0.24s ease-out both;
 }
 
-/* 메인 CTA 아래 — 메인화면(왼쪽) · 공유하기 */
+/* 메인 CTA 아래 — 메인화면(왼쪽) · 팀 랭킹 · 공유하기 (좁은 폰에서도 한 줄) */
 .result-sub-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.result-sub-actions .btn-share {
+  padding: 0 14px;
+}
+
+.result-sub-actions .btn-home {
+  padding: 0 8px;
 }
 
 .btn-retry,
