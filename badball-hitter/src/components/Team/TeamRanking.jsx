@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getTeam } from '../constants'
-import { fetchWeeklyRanking, getWeekRange, canSubmitTeamScore } from '../../lib/teamRanking'
+import { fetchWeeklyRanking, getWeekRange } from '../../lib/teamRanking'
 import TeamBadge, { teamAccent } from './TeamBadge'
 import './TeamRanking.css'
 
@@ -108,7 +108,6 @@ export default function TeamRanking({ myTeam, onClose }) {
         )}
 
         {empty && offset === 0 && <p className="team-ranking-note">No games yet this week. Be the first!</p>}
-        {!canSubmitTeamScore() && <p className="team-ranking-note">Team scores are counted in the Toss app only.</p>}
       </div>
     </div>
   )

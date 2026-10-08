@@ -59,7 +59,7 @@ export default function GameResult({ stats, team, onRetry, onHome, onTeamRanking
     submitLeaderboardScore(best)
   }, [best])
 
-  // 주간 팀 랭킹에 이번 판 점수 제출 (토스 안에서만, 한 번만)
+  // 주간 팀 랭킹에 이번 판 점수 제출 (토스·웹 모두, 한 번만)
   const teamScoreSubmitted = useRef(false)
   useEffect(() => {
     if (teamScoreSubmitted.current) return

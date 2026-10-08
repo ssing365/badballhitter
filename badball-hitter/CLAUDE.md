@@ -199,7 +199,7 @@ stopBgm()
 
 ## 주간 팀 랭킹 (Supabase)
 - 팀별 **한 주 동안 모든 판 점수 합계** + 참여자 수. 한 주 = 한국시간 월요일 00:00 시작. 이번 주 / 지난주 탭
-- **토스 판만 집계** — 게임 사용자 식별키 hash(`records.js` `getUserHash()`)가 있을 때만 제출, 로컬 개발(`import.meta.env.DEV`)은 devtools 가짜 식별키라 제출 안 함. 웹은 보기만 ("Team scores are counted in the Toss app only")
+- **토스·웹 판 모두 집계** — 사람 구분은 토스면 게임 사용자 식별키 hash(`records.js` `getUserHash()`), 웹이면 브라우저마다 만든 `web-<uuid>`(localStorage `teamPlayerId`, 지우면 새 사람). 같은 사람이 웹·토스 둘 다 하면 2명으로 셈. 로컬 개발(`import.meta.env.DEV`)은 devtools 가짜 식별키라 제출 안 함
 - DB: `supabase/team-ranking.sql` (SQL Editor에 통째로 실행, 다시 실행해도 됨) — `team_scores` 테이블은 RLS로 직접 접근 막고, anon은 RPC 2개만:
   - `submit_team_score(p_user, p_team, p_score)` — 팀 id 10개(`team_ids()`, constants `TEAMS`와 같게 유지), 0~300만점, 같은 사람 10초 안 재제출 무시
   - `weekly_team_ranking(p_offset)` — 10개 팀 전부(기록 없으면 0) `team_id, total, players, games`, 합계 내림차순
@@ -207,7 +207,7 @@ stopBgm()
 - 제출: 결과 화면 진입 시 `submitTeamScore(team, finalScore)` 한 번 (실패는 조용히 무시)
 - 화면: `Team/TeamRanking` — 타이틀 `Team Ranking`(Ranking 옆) / 결과 `팀 랭킹`(메인화면·공유하기 사이)에서 여는 **오버레이**(App `showTeamRanking`). 화면 전환으로 하면 결과 화면이 리마운트돼 카운트업·점수 제출이 다시 돌아서. 1위 대비 막대(팀색), 내 팀 강조, 기록 없는 팀은 순위 '-'
 - 토스 CORS: 외부 서버는 `https://badball-hitter.apps.tossmini.com`·`https://badball-hitter.private-apps.tossmini.com` 허용 필요 (Supabase REST는 기본 전체 허용)
-- 한계: 사용자 hash는 클라이언트가 보내는 값이라 API 직접 호출로 조작 가능 — 점수 상한·10초 제한으로 피해만 줄임
+- 한계: 사용자 hash·웹 id는 클라이언트가 보내는 값이라 API 직접 호출로 조작 가능 — 점수 상한·10초 제한으로 피해만 줄임
 - 닉네임 없음 — 토스 리더보드는 토스 게임 프로필 닉네임, 자체 개인 랭킹을 만들 때 다시 검토
 - `onGameOver` stats: `{ score, correct, classified, maxCombo, powerBalls, homeRuns, homeRunPts, grandSlams, batSpeed, unlockStep, pitchBallImages }` (accuracy·finalScore는 결과 화면에서 계산)
 

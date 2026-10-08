@@ -2,7 +2,7 @@ import { getUserHash } from './records'
 
 // 주간 팀 랭킹 — Supabase RPC(supabase/team-ranking.sql)를 fetch로 직접 호출 (supabase-js 없이)
 // env(VITE_SUPABASE_URL·VITE_SUPABASE_ANON_KEY)가 없으면 꺼짐 → 버튼 숨김
-// 점수 제출은 토스 안(게임 사용자 식별키가 있을 때)에서만 — 웹은 보기만
+// 사람 구분: 토스는 게임 사용자 식별키 hash, 웹은 브라우저마다 만든 임의 id(localStorage)
 
 const URL_BASE = import.meta.env.VITE_SUPABASE_URL
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -11,7 +11,30 @@ const TIMEOUT_MS = 5000
 export const isTeamRankingEnabled = () => !!(URL_BASE && ANON_KEY)
 
 // 로컬 개발(npm run dev)은 devtools 가짜 식별키가 진짜 DB에 올라가므로 제출 안 함
-export const canSubmitTeamScore = () => !import.meta.env.DEV && isTeamRankingEnabled() && getUserHash() != null
+export const canSubmitTeamScore = () => !import.meta.env.DEV && isTeamRankingEnabled()
+
+// 웹 플레이어 id — 브라우저 데이터를 지우면 새 사람으로 셈. 저장이 막힌 환경이면 이번 실행 동안만
+const WEB_PLAYER_KEY = 'teamPlayerId'
+let sessionPlayerId = null
+
+const newPlayerId = () =>
+  `web-${globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`
+
+const getWebPlayerId = () => {
+  try {
+    let id = localStorage.getItem(WEB_PLAYER_KEY)
+    if (!id) {
+      id = newPlayerId()
+      localStorage.setItem(WEB_PLAYER_KEY, id)
+    }
+    return id
+  } catch {
+    sessionPlayerId ??= newPlayerId()
+    return sessionPlayerId
+  }
+}
+
+const getPlayerId = () => getUserHash() ?? getWebPlayerId()
 
 const rpc = async (fn, args) => {
   const controller = new AbortController()
@@ -38,7 +61,7 @@ const rpc = async (fn, args) => {
 export const submitTeamScore = async (team, score) => {
   if (!team || !canSubmitTeamScore()) return
   try {
-    await rpc('submit_team_score', { p_user: getUserHash(), p_team: team, p_score: Math.round(score) })
+    await rpc('submit_team_score', { p_user: getPlayerId(), p_team: team, p_score: Math.round(score) })
   } catch (error) {
     console.warn('[teamRanking] submit error:', error)
   }
