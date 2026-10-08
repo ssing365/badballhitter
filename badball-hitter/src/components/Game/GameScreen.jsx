@@ -9,7 +9,7 @@ import {
   FEVER_CHARGE_MAX, FEVER_CHARGE_DECAY_DELAY_MS, FEVER_CHARGE_DECAY_PER_SEC,
   pickMelonTarget, MELON_FEVER_CHARGE, PITCHER_CHANGE_SCORE, shuffleAllDirs,
   PITCHER_RECALL_MS, PITCHER_WALK_MS, PITCHER_CHANGE_MS, WATERMELON_MIN, WATERMELON_MAX, WATERMELON_POINTS, WATERMELON_IMAGE,
-  MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS,
+  MELON_SHARDS_IMAGE, MELON_SHARDS_SIZE, MELON_SHARDS, getBatterImages,
 } from '../constants'
 import {
   playHitSfx, playFeverHitSfx, playMelonCrashSfx, playMissSfx, playSfx, stopSfx, pauseSfx, setSfxRate, resumeSfx, duckBgm,
@@ -88,7 +88,7 @@ const buildQueue = (existing, unlockStep, pitchDirs, melonRef, size = QUEUE_SIZE
   return result
 }
 
-export default function GameScreen({ onGameOver, onQuit }) {
+export default function GameScreen({ team, onGameOver, onQuit }) {
   // ── 게임 상태 ──
   const [score, setScore] = useState(0)
   const [combo, setCombo] = useState(0)
@@ -1008,10 +1008,11 @@ export default function GameScreen({ onGameOver, onQuit }) {
   const leftHints = activeTypes.filter((t) => t.dir === 'left').reverse()
   const rightHints = activeTypes.filter((t) => t.dir === 'right').reverse()
 
+  const batterImages = getBatterImages(team)
   const batterSrc =
-    swingDir === 'left' ? '/assets/batter_swing_l.png'
-      : swingDir === 'right' ? '/assets/batter_swing_r.png'
-        : '/assets/batter_idle.png'
+    swingDir === 'left' ? batterImages.left
+      : swingDir === 'right' ? batterImages.right
+        : batterImages.idle
 
   // 맨 앞이 수박 — 연타 안내
   const melonFront = !fever && !!queue[0]?.watermelon

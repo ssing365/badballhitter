@@ -257,3 +257,27 @@ export const calcFinalBreakdown = ({ score, correct, classified, maxCombo, power
   const finalScore = rows.reduce((sum, r) => sum + r.pts, 0)
   return { rows, finalScore }
 }
+
+// ===== 팀 =====
+// 색은 scripts/recolor-batter.py TEAMS와 같은 값 (팀 선택 버튼 배지: patch 바탕 + helmet 테두리 + letter 이니셜)
+// 타자 그림은 public/assets/batters/<id>_<포즈>.png — 스크립트 --assets로 생성
+export const TEAMS = [
+  { id: 'kt', city: 'Suwon', name: 'Wiz', initial: 'K', helmet: '#2A2A2A', patch: '#2A2A2A', letter: '#FFFFFF' },
+  { id: 'samsung', city: 'Daegu', name: 'Lions', initial: 'S', helmet: '#064CA1', patch: '#064CA1', letter: '#FFFFFF' },
+  { id: 'kia', city: 'Gwangju', name: 'Tigers', initial: 'K', helmet: '#EA0029', patch: '#EA0029', letter: '#2A2A2A' },
+  { id: 'lg', city: 'Seoul', name: 'Twins', initial: 'T', helmet: '#2A2A2A', patch: '#2A2A2A', letter: '#C7014E' },
+  { id: 'doosan', city: 'Seoul', name: 'Bears', initial: 'D', helmet: '#191748', patch: '#191748', letter: '#FFFFFF' },
+  { id: 'ssg', city: 'Incheon', name: 'Landers', initial: 'S', helmet: '#052E2B', patch: '#052E2B', letter: '#FFFFFF' },
+  { id: 'nc', city: 'Changwon', name: 'Dinos', initial: 'N', helmet: '#00275A', patch: '#00275A', letter: '#AF917B' },
+  { id: 'lotte', city: 'Busan', name: 'Giants', initial: 'G', helmet: '#0C2340', patch: '#0C2340', letter: '#D00E31' },
+  { id: 'hanwha', city: 'Daejeon', name: 'Eagles', initial: 'E', helmet: '#2A2A2A', patch: '#2A2A2A', letter: '#FC4E00' },
+  { id: 'kiwoom', city: 'Seoul', name: 'Heroes', initial: 'K', helmet: '#E4017F', patch: '#FFFFFF', letter: '#570514' },
+]
+
+export const getTeam = (teamId) => TEAMS.find((t) => t.id === teamId) ?? null
+
+// 타자 스프라이트 — 팀이 없으면 기본(파란 K) 타자
+export const getBatterImages = (teamId) => {
+  const base = getTeam(teamId) ? `/assets/batters/${teamId}_` : '/assets/batter_'
+  return { idle: `${base}idle.png`, left: `${base}swing_l.png`, right: `${base}swing_r.png` }
+}

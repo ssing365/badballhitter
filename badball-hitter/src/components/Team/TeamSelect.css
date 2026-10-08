@@ -1,73 +1,133 @@
-.select-wrap {
-    width: 100%;
-    max-width: 400px;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 1.5rem 1.25rem;
-    margin: 1rem auto;
-  }
-  
-  .select-wrap h2 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #0f172a;
-    margin-bottom: 4px;
-  }
-  
-  .select-wrap p {
-    font-size: 13px;
-    color: #64748b;
-    margin-bottom: 1.25rem;
-  }
-  
-  .team-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 7px;
-    margin-bottom: 1.25rem;
-  }
-  
-  .team-btn {
-    padding: 10px 8px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    color: #1e293b;
-    text-align: center;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  
-  .team-btn:hover {
-    border-color: #94a3b8;
-  }
-  
-  .team-btn.selected {
-    border: 1.5px solid #1D9E75;
-    background: #ecfdf5;
-    color: #065f46;
-  }
-  
-  .start-btn {
-    width: 100%;
-    padding: 12px;
-    background: #1D9E75;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  
-  .start-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  
-  .start-btn:not(:disabled):hover {
-    opacity: 0.88;
-  }
+.team-screen {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  height: 100svh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #0a1420;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --pixel-font: 'Press Start 2P', 'Galmuri11', monospace;
+}
+
+/* 경기장 배경 살짝 흐리게 — blur 가장자리가 비치지 않게 조금 키워서 */
+.team-screen::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  background: url('/assets/bg.jpg') center / cover no-repeat;
+  filter: blur(4px);
+}
+
+.team-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 18, 32, 0.45) 0%, rgba(8, 18, 32, 0.7) 100%);
+  pointer-events: none;
+}
+
+.team-back {
+  position: absolute;
+  top: calc(8px + var(--safe-top, 0px));
+  left: 8px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  padding-bottom: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.team-back:active { transform: scale(0.92); }
+
+.team-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: calc(56px + var(--safe-top, 0px)) 16px calc(24px + var(--safe-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.team-heading {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 2.4rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.45);
+  margin-bottom: 16px;
+}
+
+.team-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.team-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(8, 18, 32, 0.45);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease-out, border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.team-btn:active { transform: scale(0.97); }
+
+.team-btn.selected {
+  border-color: var(--team-color);
+  background: rgba(8, 18, 32, 0.65);
+  box-shadow: 0 0 0 1.5px var(--team-color), 0 0 14px var(--team-color);
+  transform: scale(1.03);
+}
+
+.team-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.team-city {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.team-nick {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.team-play {
+  margin-top: 24px;
+}
+
+.team-play:disabled {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .team-screen { max-height: 700px; }
+  .team-btn:not(.selected):hover { border-color: rgba(255, 255, 255, 0.5); }
+}

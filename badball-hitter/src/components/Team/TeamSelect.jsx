@@ -1,39 +1,39 @@
-import { useState } from 'react'
 import { TEAMS } from '../constants'
+import TeamBadge, { teamAccent } from './TeamBadge'
 import './TeamSelect.css'
 
-export default function TeamSelect({ onStart }) {
-  const [selectedTeam, setSelectedTeam] = useState(null)
-
-  const handleStart = () => {
-    if (!selectedTeam) return
-    onStart(selectedTeam)
-  }
-
+// 팀 선택 — 타이틀 Play Ball 다음 화면. 지난번 팀이 미리 골라져 있어 Play Ball 한 번이면 바로 시작
+export default function TeamSelect({ team, onSelect, onStart, onBack }) {
   return (
-    <div className="select-wrap">
-      <h2>⚾ 배드볼히터</h2>
-      <p>투수가 던지는 공을 좌/우로 분류하라!</p>
+    <div className="team-screen">
+      <div className="team-scrim" />
+      <button className="team-back" onClick={onBack} aria-label="Back to title">‹</button>
 
-      <div className="team-grid">
-        {TEAMS.map((team) => (
-          <button
-            key={team.id}
-            className={`team-btn ${selectedTeam?.id === team.id ? 'selected' : ''}`}
-            onClick={() => setSelectedTeam(team)}
-          >
-            {team.emoji} {team.name}
-          </button>
-        ))}
+      <div className="team-content">
+        <h2 className="team-heading">Choose Your Team</h2>
+
+        <div className="team-grid">
+          {TEAMS.map((t) => (
+            <button
+              key={t.id}
+              className={`team-btn${team === t.id ? ' selected' : ''}`}
+              style={{ '--team-color': teamAccent(t) }}
+              onClick={() => onSelect(t.id)}
+              aria-pressed={team === t.id}
+            >
+              <TeamBadge team={t} />
+              <span className="team-name">
+                <span className="team-city">{t.city}</span>
+                <span className="team-nick">{t.name}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button className="btn-play-ball team-play" onClick={onStart} disabled={!team}>
+          <span className="btn-play-ball-text">Play Ball!</span>
+        </button>
       </div>
-
-      <button
-        className="start-btn"
-        disabled={!selectedTeam}
-        onClick={handleStart}
-      >
-        {selectedTeam ? `${selectedTeam.name} 타자로 시작!` : '팀을 먼저 선택하세요'}
-      </button>
     </div>
   )
 }

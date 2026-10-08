@@ -2,9 +2,12 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import TitleScreen from './components/Title/TitleScreen'
 import GameScreen from './components/Game/GameScreen'
 import GameResult from './components/Game/GameResult'
+import TeamSelect from './components/Team/TeamSelect'
 import BgmToggle from './components/Sound/BgmToggle'
 import { playBgm } from './lib/sound'
-import { preloadImages } from './lib/preload'
+import { preloadImages, GAME_IMAGES } from './lib/preload'
+import { loadTeam, saveTeam } from './lib/team'
+import { getBatterImages } from './components/constants'
 import { loadBestRecord } from './lib/records'
 import { openLeaderboard } from './lib/leaderboard'
 
@@ -14,14 +17,16 @@ const Analytics = import.meta.env.MODE === 'web'
   : null
 
 export default function App() {
-  const [screen, setScreen] = useState('title') // 'title' | 'playing' | 'result'
+  const [screen, setScreen] = useState('title') // 'title' | 'team' | 'playing' | 'result'
+  const [team, setTeam] = useState(loadTeam) // 지난번 고른 팀 (없으면 null — 팀 화면에서 골라야 시작)
   const [stats, setStats] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [assetsReady, setAssetsReady] = useState(false)
 
   // 게임 이미지 프리로드 + 최고 기록 로드 — 완료 전엔 Play 버튼 비활성
   useEffect(() => {
-    Promise.all([preloadImages(), loadBestRecord()]).then(() => setAssetsReady(true))
+    const teamImages = team ? Object.values(getBatterImages(team)) : []
+    Promise.all([preloadImages([...GAME_IMAGES, ...teamImages]), loadBestRecord()]).then(() => setAssetsReady(true))
   }, [])
 
   // 화면별 BGM — 단일 진입점
@@ -29,7 +34,20 @@ export default function App() {
     playBgm(screen === 'playing' ? 'fast' : 'normal')
   }, [screen])
 
+  // 타이틀 Play Ball → 팀 선택
   const handlePlay = () => {
+    playBgm('normal') // sync with click (autoplay unlock)
+    setScreen('team')
+  }
+
+  const handleSelectTeam = (id) => {
+    setTeam(id)
+    saveTeam(id)
+    preloadImages(Object.values(getBatterImages(id)))
+  }
+
+  // 팀 선택 Play Ball → 게임
+  const handleStart = () => {
     playBgm('fast') // sync with click (autoplay unlock)
     setGameKey((k) => k + 1)
     setScreen('playing')
@@ -64,6 +82,7 @@ export default function App() {
     content = (
       <GameScreen
         key={gameKey}
+        team={team}
         onGameOver={handleGameOver}
         onQuit={handleBackToTitle}
       />
@@ -74,6 +93,15 @@ export default function App() {
         stats={stats}
         onRetry={handleRetry}
         onHome={handleBackToTitle}
+      />
+    )
+  } else if (screen === 'team') {
+    content = (
+      <TeamSelect
+        team={team}
+        onSelect={handleSelectTeam}
+        onStart={handleStart}
+        onBack={handleBackToTitle}
       />
     )
   } else {
