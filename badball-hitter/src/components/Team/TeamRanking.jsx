@@ -6,8 +6,8 @@ import './TeamRanking.css'
 
 // 주간 팀 랭킹 — 타이틀·결과 화면 위에 덮는 오버레이 (결과 화면이 리마운트되면 카운트업·점수 제출이 다시 돌아서)
 const TABS = [
-  { offset: 0, label: 'This Week' },
-  { offset: 1, label: 'Last Week' },
+  { offset: 0, label: '이번 주' },
+  { offset: 1, label: '지난주' },
 ]
 
 const formatDate = (ms) => {
@@ -18,7 +18,7 @@ const formatDate = (ms) => {
 
 const formatRemaining = (ms) => {
   const h = Math.max(0, Math.floor(ms / 3600000))
-  return h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${Math.floor((ms % 3600000) / 60000)}m`
+  return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간 ${Math.floor((ms % 3600000) / 60000)}분`
 }
 
 export default function TeamRanking({ myTeam, onClose }) {
@@ -49,7 +49,7 @@ export default function TeamRanking({ myTeam, onClose }) {
       <button className="team-ranking-close" onClick={onClose} aria-label="Close">‹</button>
 
       <div className="team-ranking-content">
-        <h2 className="team-ranking-heading">Weekly Team Ranking</h2>
+        <h2 className="team-ranking-heading">주간 팀 랭킹</h2>
 
         <div className="team-ranking-tabs" role="tablist">
           {TABS.map((t) => (
@@ -67,7 +67,7 @@ export default function TeamRanking({ myTeam, onClose }) {
 
         <p className="team-ranking-period">
           {formatDate(start)} – {formatDate(lastDay)}
-          {offset === 0 && <span className="team-ranking-reset"> · Resets in {formatRemaining(end - Date.now())}</span>}
+          {offset === 0 && <span className="team-ranking-reset"> · {formatRemaining(end - Date.now())} 뒤 초기화</span>}
         </p>
 
         {rows === undefined && <p className="team-ranking-status">Loading...</p>}

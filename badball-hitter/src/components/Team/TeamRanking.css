@@ -64,10 +64,11 @@
 }
 
 .team-ranking-heading {
-  font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: 2.2rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  /* 기간 줄과 같은 글꼴 — 한글은 기기 기본 한글 폰트로 */
+  font-family: 'DM Sans', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: #f8fafc;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.45);
 }
@@ -90,7 +91,7 @@
   color: rgba(255, 255, 255, 0.65);
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
