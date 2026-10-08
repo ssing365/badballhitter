@@ -91,6 +91,7 @@ export default function App() {
     content = (
       <GameResult
         stats={stats}
+        team={team}
         onRetry={handleRetry}
         onHome={handleBackToTitle}
       />

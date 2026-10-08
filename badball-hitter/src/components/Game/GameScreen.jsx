@@ -523,7 +523,6 @@ export default function GameScreen({ team, onGameOver, onQuit }) {
     cancelAnimationFrame(timerRaf.current)
     clearInterval(feverTimer.current)
     const s = stateRef.current
-    // TODO: Supabase — save score (결과 화면의 finalScore 기준)
     setTimeout(() => {
       onGameOver({
         score: s.score,

@@ -4,10 +4,8 @@ import { playSfx, playScoreDing, playFinalScoreDing, duckBgm } from '../../lib/s
 import { getBestRecord, saveBestRecord } from '../../lib/records'
 import { submitLeaderboardScore } from '../../lib/leaderboard'
 import { getShareUrl } from '../../lib/share'
+import { submitTeamScore } from '../../lib/teamRanking'
 import './GameResult.css'
-
-// TODO: Supabase — save score on game over (finalScore 기준)
-// import { saveScore } from '../lib/supabase'
 
 const TOAST_DURATION_MS = 2000
 
@@ -27,7 +25,7 @@ function prefersReducedMotion() {
 
 const easeOutCubic = (t) => 1 - (1 - t) ** 3
 
-export default function GameResult({ stats, onRetry, onHome }) {
+export default function GameResult({ stats, team, onRetry, onHome }) {
   const { unlockStep = 0, pitchBallImages = {} } = stats
   const grade = getGrade(unlockStep)
   const { rows, finalScore } = useMemo(() => calcFinalBreakdown(stats), [stats])
@@ -60,6 +58,14 @@ export default function GameResult({ stats, onRetry, onHome }) {
     scoreSubmitted.current = true
     submitLeaderboardScore(best)
   }, [best])
+
+  // 주간 팀 랭킹에 이번 판 점수 제출 (토스 안에서만, 한 번만)
+  const teamScoreSubmitted = useRef(false)
+  useEffect(() => {
+    if (teamScoreSubmitted.current) return
+    teamScoreSubmitted.current = true
+    submitTeamScore(team, finalScore)
+  }, [team, finalScore])
 
   // ── 점수 카운트업 ──
   // stage = 현재 올라가는 행 index, rows.length면 연출 완료
@@ -258,9 +264,6 @@ export default function GameResult({ stats, onRetry, onHome }) {
             </div>
           </div>
         </div>
-
-        {/* TODO: Supabase — top 10 leaderboard */}
-        {/* <Leaderboard currentScore={finalScore} /> */}
 
         <div className="result-actions">
           <button className="btn-retry" onClick={onRetry}>

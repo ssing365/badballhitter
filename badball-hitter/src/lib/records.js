@@ -79,6 +79,9 @@ export const loadBestRecord = async () => {
 // { score, unlockStep } — 기록 없으면 score null, 등급 저장 이전 기록이면 unlockStep null
 export const getBestRecord = () => best
 
+// 게임 사용자 식별키 hash — 토스 밖·식별키 실패면 null (팀 랭킹 제출 여부 판단에도 씀)
+export const getUserHash = () => keyPrefix.slice(0, -1) || null
+
 export const saveBestRecord = (score, unlockStep) => {
   best = { score, unlockStep }
   return Promise.all([
