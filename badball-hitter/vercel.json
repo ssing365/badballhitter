@@ -1,13 +1,4 @@
 {
   "buildCommand": "npm run build:web",
-  "headers": [
-    {
-      "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
-    },
-    {
-      "source": "/sounds/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
-    }
-  ]
+  "redirects": [{ "source": "/(.*)", "destination": "https://websideout.net/badball/", "permanent": true }]
 }
